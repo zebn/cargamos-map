@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-itunes-app" content="app-id=6740075526" />
+  <title>Cargamos - Estaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+
+<body>
+  <!-- App Download Banner -->
+  <div id="app-banner">
+    <div class="banner-content">
+      <a href="https://cargamos.eu" target="_blank" rel="noopener noreferrer" class="banner-link">
+        <img src="/src/assets/cargamos-logo.png" alt="Cargamos" class="banner-logo" />
+        <div class="banner-text">
+          <strong>Cargamos</strong>
+          <span data-i18n="banner.subtitle">Alquila un powerbank al instante</span>
+        </div>
+      </a>
+      <a id="download-link" href="https://apps.apple.com/es/app/cargamos/id6740075526" target="_blank"
+        rel="noopener noreferrer" class="banner-btn" data-i18n="banner.download">
+        Descargar App
+      </a>
+      <button id="banner-close" class="banner-close" aria-label="Cerrar">&times;</button>
+    </div>
+  </div>
+
+  <!-- Map Container -->
+  <div id="map"></div>
+
+  <!-- Map Controls -->
+  <div class="map-controls">
+    <button id="btn-menu" class="map-btn" aria-label="Menú">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        stroke-linecap="round">
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
+    </button>
+    <button id="btn-geolocate" class="map-btn" aria-label="Mi ubicación">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4" />
+        <line x1="12" y1="2" x2="12" y2="6" />
+        <line x1="12" y1="18" x2="12" y2="22" />
+        <line x1="2" y1="12" x2="6" y2="12" />
+        <line x1="18" y1="12" x2="22" y2="12" />
+      </svg>
+    </button>
+    <button id="btn-faq" class="map-btn" aria-label="FAQ">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+    </button>
+    <button id="btn-lang" class="map-btn lang-btn" aria-label="Language">
+      <span id="lang-label">ES</span>
+    </button>
+  </div>
+
+  <!-- Side Menu -->
+  <div id="menu-overlay" class="menu-overlay hidden"></div>
+  <div id="side-menu" class="side-menu hidden">
+    <div class="menu-header">
+      <img src="/src/assets/cargamos-logo-big.png" alt="Cargamos" class="menu-logo" />
+      <button id="menu-close" class="menu-close" aria-label="Cerrar">&times;</button>
+    </div>
+    <nav class="menu-nav">
+      <a href="#" class="menu-item" id="menu-how" data-i18n="menu.how">🔋 ¿Cómo funciona?</a>
+      <a href="#" class="menu-item" id="menu-pricing" data-i18n="menu.pricing">💰 Precios</a>
+      <a href="#" class="menu-item" id="menu-faq" data-i18n="menu.faq">❓ FAQ</a>
+      <a href="https://apps.apple.com/es/app/cargamos/id6740075526" target="_blank" rel="noopener noreferrer"
+        class="menu-item" data-i18n="menu.download">📱 Descargar App</a>
+      <a href="mailto:info@cargamos.eu" class="menu-item" data-i18n="menu.contact">✉️ Contacto</a>
+    </nav>
+  </div>
+
+  <!-- FAQ Modal -->
+  <div id="faq-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 data-i18n="faq.title">Preguntas Frecuentes</h2>
+        <button id="faq-close" class="modal-close" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <details class="faq-item">
+          <summary data-i18n="faq.q1">¿Cómo alquilo un powerbank?</summary>
+          <p data-i18n="faq.a1">Descarga la app Cargamos, escanea el código QR de la estación y retira tu powerbank.
+            ¡Así de fácil!</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q2">¿Cuánto cuesta?</summary>
+          <p data-i18n="faq.a2">Los primeros minutos son gratis. Después se cobra por minuto de uso. El precio máximo
+            diario está limitado.
+            Consulta los detalles en cada estación.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q3">¿Dónde devuelvo el powerbank?</summary>
+          <p data-i18n="faq.a3">Puedes devolverlo en cualquier estación Cargamos con huecos libres. No tiene que ser la
+            misma donde lo
+            recogiste.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q4">¿Qué pasa si no lo devuelvo?</summary>
+          <p data-i18n="faq.a4">Si no devuelves el powerbank en el plazo establecido, se cobrará el depósito completo.
+          </p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q5">¿Es compatible con mi teléfono?</summary>
+          <p data-i18n="faq.a5">Sí, nuestros powerbanks incluyen cables Lightning, USB-C y Micro USB.</p>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- Station Info Panel -->
+  <div id="station-panel" class="station-panel hidden">
+    <button id="panel-close" class="panel-close" aria-label="Cerrar">&times;</button>
+    <div id="panel-content"></div>
+  </div>
+
+  <script>(g => { var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window; b = b[c] || (b[c] = {}); var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams, u = () => h || (h = new Promise(async (f, n) => { await (a = m.createElement("script")); e.set("libraries", [...r] + ""); for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]); e.set("callback", c + ".maps." + q); a.src = `https://maps.googleapis.com/maps/api/js?` + e; d[q] = f; a.onerror = () => h = n(Error(p + " could not load.")); a.nonce = m.querySelector("script[nonce]")?.nonce || ""; m.head.append(a) })); d[l] ? console.warn(p + " only loads once. Ignoring:", g) : d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)) })({ key: "AIzaSyBB5BOr-em9iylAfS5l0LmLsvK84p0lMJA", v: "weekly" });</script>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
