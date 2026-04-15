@@ -168,7 +168,7 @@ function showStationInfo(station: Station) {
     </div>
     <div class="card-pricing">
       <p>${t('station.freeMinutes', String(freeMinutes), currency, pricePerUnit, unitMinutes)}</p>
-      <p>${t('station.maxPrice', currency, maxPrice, currency, station.pYajin)}</p>
+      <p>${t('station.maxPrice', currency, maxPrice)}</p>
     </div>
     <a class="card-nav-btn" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(station.latitude + ',' + station.longitude)}" target="_blank" rel="noopener noreferrer">
       📍 ${t('station.navigate')}
@@ -196,7 +196,7 @@ function initBanner() {
   const link = document.getElementById('download-link') as HTMLAnchorElement;
   const ua = navigator.userAgent.toLowerCase();
   if (/android/.test(ua)) {
-    link.href = 'https://apps.apple.com/es/app/cargamos/id6740075526';
+    link.href = 'https://play.google.com/store/apps/details?id=com.cargamos.charge';
   }
 }
 
