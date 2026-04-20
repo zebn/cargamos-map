@@ -28,6 +28,7 @@ async function initMap() {
     streetViewControl: false,
     fullscreenControl: false,
     mapTypeControl: false,
+    clickableIcons: false,
   });
 
   clusterer = new MarkerClusterer({
