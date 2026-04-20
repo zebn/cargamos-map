@@ -1,6 +1,8 @@
-import type { ApiResponse } from './types';
+import type { ApiResponse, PriceStrategy, PriceStrategyResponse } from './types';
 
 const API_URL = 'https://m.cargamos.eu/cdb-app-api/v1/app/cdb/shop/listnear';
+const PRICE_API_URL = 'https://cargamos-report.duckdns.org/api/price-strategies';
+const PRICE_API_KEY = 'test';
 
 export async function fetchStations(lat: number, lng: number, zoomLevel: number = 4): Promise<ApiResponse> {
     const formData = new FormData();
@@ -26,4 +28,30 @@ export async function fetchStations(lat: number, lng: number, zoomLevel: number 
     }
 
     return data;
+}
+
+export async function fetchAllPriceStrategies(): Promise<PriceStrategy[]> {
+    const all: PriceStrategy[] = [];
+    let page = 1;
+    const limit = 100;
+
+    while (true) {
+        const url = `${PRICE_API_URL}?page=${page}&limit=${limit}`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'x-api-key': PRICE_API_KEY },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Price API error: ${response.status}`);
+        }
+
+        const result: PriceStrategyResponse = await response.json();
+        all.push(...result.data);
+
+        if (page >= result.pagination.totalPages) break;
+        page++;
+    }
+
+    return all;
 }

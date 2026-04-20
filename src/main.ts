@@ -1,6 +1,6 @@
 ﻿import { MarkerClusterer } from '@googlemaps/markerclusterer';
-import { fetchStations } from './api';
-import type { Station } from './types';
+import { fetchStations, fetchAllPriceStrategies } from './api';
+import type { Station, PriceStrategy } from './types';
 import { t, getLang, setLang, onLangChange, LANG_LABELS, type Lang } from './i18n';
 import cargamosLogo from './assets/cargamos-logo.png';
 import './style.css';
@@ -12,6 +12,7 @@ let map: google.maps.Map;
 let markers: google.maps.marker.AdvancedMarkerElement[] = [];
 let clusterer: MarkerClusterer;
 let debounceTimer: ReturnType<typeof setTimeout>;
+let priceMap: Map<string, PriceStrategy> = new Map();
 
 async function initMap() {
   const { Map } = await google.maps.importLibrary('maps') as google.maps.MapsLibrary;
@@ -126,10 +127,11 @@ function decodeHtmlEntities(text: string): string {
 function showStationInfo(station: Station) {
 
   const isOnline = station.businessStatus === 1;
-  const freeMinutes = parseInt(station.pMian) || 0;
-  const pricePerUnit = station.pJifei;
-  const unitMinutes = station.pJifeiDanwei;
-  const maxPrice = station.pFengding;
+  const strategy = priceMap.get(String(station.pPriceid));
+  const freeMinutes = strategy ? (parseInt(strategy.p_freeuse_minute) || parseInt(strategy.p_first_minutes) || 0) : (parseInt(station.pMian) || 0);
+  const pricePerUnit = strategy ? strategy.p_price : station.pJifei;
+  const unitMinutes = strategy ? strategy.p_price_minute : station.pJifeiDanwei;
+  const maxPrice = strategy ? strategy.p_day_amount : station.pFengding;
   const currency = station.currencyName || '€';
   const shopName = decodeHtmlEntities(station.shopName);
   const address = decodeHtmlEntities(station.shopAddress1 || station.shopAddress);
@@ -302,4 +304,11 @@ initMap().then(() => {
   console.log('Map initialized successfully');
 }).catch((err) => {
   console.error('Map failed to initialize:', err);
+});
+
+fetchAllPriceStrategies().then((strategies) => {
+  strategies.forEach((s) => priceMap.set(String(s.p_id), s));
+  console.log(`Loaded ${strategies.length} price strategies`);
+}).catch((err) => {
+  console.error('Failed to load price strategies:', err);
 });
