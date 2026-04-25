@@ -93,7 +93,7 @@ function updateMarkers(stations: Station[]) {
     const lng = parseFloat(station.longitude);
     if (isNaN(lat) || isNaN(lng)) return;
 
-    const isOnline = station.businessStatus === 1;
+    const isOnline = station.infoStatus === '在线';
     const freeNum = parseInt(station.freeNum) || 0;
 
     const el = document.createElement('div');
@@ -127,7 +127,7 @@ function decodeHtmlEntities(text: string): string {
 
 function showStationInfo(station: Station) {
 
-  const isOnline = station.businessStatus === 1;
+  const isOnline = station.infoStatus === '在线';
   const strategy = priceMap.get(String(station.pPriceid));
   const freeMinutes = strategy ? (parseInt(strategy.p_freeuse_minute) || parseInt(strategy.p_first_minutes) || 0) : (parseInt(station.pMian) || 0);
   const pricePerUnit = strategy ? strategy.p_price : station.pJifei;
