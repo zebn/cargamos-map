@@ -516,6 +516,118 @@ html, body {
   background: rgb(230, 200, 20);
 }
 
+/* Cabinet Positions */
+.card-positions {
+  margin: 0 16px 12px;
+}
+
+.positions-loading {
+  font-size: 12px;
+  color: #aaa;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.positions-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.positions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.position-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f7f7f7;
+  border-radius: 10px;
+  border-left: 3px solid rgb(251, 222, 25);
+}
+
+.position-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 10px;
+}
+
+.position-stats {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.position-stat {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+
+.position-stat.pos-online {
+  color: #b8960a;
+}
+
+.position-stat.pos-offline {
+  color: #aaa;
+}
+
+.position-highlight {
+  background: rgba(251, 222, 25, 0.35) !important;
+  border-left-color: #b8960a !important;
+  transition: background 0.3s ease;
+}
+
+/* Cabinet sub-markers */
+.cabinet-marker {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: 2px solid rgb(251, 222, 25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease;
+}
+
+.cabinet-marker:hover {
+  transform: scale(1.2);
+}
+
+.cabinet-marker-pulse {
+  animation: markerPulse 0.9s ease;
+}
+
+@keyframes markerPulse {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(251, 222, 25, 0.7); }
+  50%  { transform: scale(1.35); box-shadow: 0 0 0 8px rgba(251, 222, 25, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(251, 222, 25, 0); }
+}
+
+.cabinet-marker-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgb(251, 222, 25);
+  line-height: 1;
+}
+
 /* Map Control Buttons */
 .map-controls {
   position: fixed;

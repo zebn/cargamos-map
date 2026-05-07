@@ -1,7 +1,8 @@
-import type { ApiResponse, PriceStrategy, PriceStrategyResponse } from './types';
+import type { ApiResponse, PriceStrategy, PriceStrategyResponse, CabinetPosition, CabinetPositionsResponse } from './types';
 
 const API_URL = 'https://m.cargamos.eu/cdb-app-api/v1/app/cdb/shop/listnear';
 const PRICE_API_URL = 'https://cargamos-report.duckdns.org/api/price-strategies';
+const CABINET_POSITION_API_URL = 'https://cargamos-report.duckdns.org/api/cabinets/lisnearnew';
 
 export async function fetchStations(lat: number, lng: number, zoomLevel: number = 4): Promise<ApiResponse> {
     const formData = new FormData();
@@ -52,4 +53,20 @@ export async function fetchAllPriceStrategies(): Promise<PriceStrategy[]> {
     }
 
     return all;
+}
+
+export async function fetchCabinetPositions(shopId: string): Promise<CabinetPosition[]> {
+    const url = `${CABINET_POSITION_API_URL}?shopid=${encodeURIComponent(shopId)}`;
+
+    const response = await fetch(url, {
+        headers: { 'p-open-id': 'BJCD000001' },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Cabinet positions API error: ${response.status}`);
+    }
+
+    const data: CabinetPositionsResponse = await response.json();
+
+    return data.data;
 }

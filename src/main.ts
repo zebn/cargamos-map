@@ -1,6 +1,6 @@
 ﻿import { MarkerClusterer } from '@googlemaps/markerclusterer';
-import { fetchStations, fetchAllPriceStrategies } from './api';
-import type { Station, PriceStrategy } from './types';
+import { fetchStations, fetchAllPriceStrategies, fetchCabinetPositions } from './api';
+import type { Station, PriceStrategy, CabinetPosition } from './types';
 import { t, getLang, setLang, onLangChange, LANG_LABELS, type Lang } from './i18n';
 import cargamosLogo from './assets/cargamos-logo.png';
 import './style.css';
@@ -10,6 +10,7 @@ const DEFAULT_ZOOM = 13;
 
 let map: google.maps.Map;
 let markers: google.maps.marker.AdvancedMarkerElement[] = [];
+let subMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
 let clusterer: MarkerClusterer;
 let debounceTimer: ReturnType<typeof setTimeout>;
 let priceMap: Map<string, PriceStrategy> = new Map();
@@ -126,6 +127,7 @@ function decodeHtmlEntities(text: string): string {
 }
 
 function showStationInfo(station: Station) {
+  clearSubMarkers();
 
   const isOnline = station.infoStatus === '在线';
   const strategy = priceMap.get(String(station.pPriceid));
@@ -173,6 +175,9 @@ function showStationInfo(station: Station) {
       <p>${t('station.freeMinutes', String(freeMinutes), currency, pricePerUnit, unitMinutes)}</p>
       <p>${t('station.maxPrice', currency, maxPrice)}</p>
     </div>
+    <div class="card-positions" id="card-positions">
+      <p class="positions-loading">${t('station.positionsLoading')}</p>
+    </div>
     <a class="card-nav-btn" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(station.latitude + ',' + station.longitude)}" target="_blank" rel="noopener noreferrer">
       📍 ${t('station.navigate')}
     </a>
@@ -183,6 +188,141 @@ function showStationInfo(station: Station) {
   content.querySelector('.card-address')!.textContent = address;
 
   panel.classList.remove('hidden');
+
+  // Load cabinet positions asynchronously
+  console.log('[positions] fetching for shopId:', station.newID);
+  fetchCabinetPositions(station.newID).then((positions) => {
+    console.log('[positions] received:', positions);
+    const positionsEl = document.getElementById('card-positions');
+    if (!positionsEl) return;
+    renderPositions(positionsEl, positions);
+    addPositionMarkers(positions);
+  }).catch((err) => {
+    console.error('[positions] failed:', err);
+    const positionsEl = document.getElementById('card-positions');
+    if (positionsEl) positionsEl.remove();
+  });
+}
+
+function renderPositions(container: HTMLElement, positions: CabinetPosition[]) {
+  const totalCabinets = positions.reduce((s, p) => s + p.cabinets.length, 0);
+  if (!totalCabinets) {
+    container.remove();
+    return;
+  }
+
+  const title = document.createElement('p');
+  title.className = 'positions-title';
+  title.textContent = t('station.positions');
+
+  const list = document.createElement('div');
+  list.className = 'positions-list';
+
+  // Render each cabinet as a row; store positionIndex so clicking can highlight the sub-marker
+  let globalIdx = 0;
+  positions.forEach((pos, posIdx) => {
+    pos.cabinets.forEach((cab) => {
+      const rowIdx = globalIdx++;
+      const item = document.createElement('div');
+      item.className = 'position-item';
+      item.dataset.posIdx = String(posIdx);
+      item.dataset.rowIdx = String(rowIdx);
+      item.style.cursor = 'pointer';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'position-name';
+      nameEl.textContent = cab.cabinetId;
+
+      const stats = document.createElement('div');
+      stats.className = 'position-stats';
+
+      const availEl = document.createElement('span');
+      availEl.className = 'position-stat avail';
+      availEl.textContent = `\uD83D\uDD0B ${cab.borrow}`;
+      availEl.title = t('station.available');
+
+      const slotsEl = document.createElement('span');
+      slotsEl.className = 'position-stat slots';
+      slotsEl.textContent = `\uD83D\uDCE5 ${cab.also}`;
+      slotsEl.title = t('station.freeSlots');
+
+      const onlineEl = document.createElement('span');
+      onlineEl.className = `position-stat ${cab.infoStatus === '\u5728\u7EBF' ? 'pos-online' : 'pos-offline'}`;
+      onlineEl.textContent = cab.infoStatus === '\u5728\u7EBF' ? t('station.online') : t('station.offline');
+
+      stats.append(availEl, slotsEl, onlineEl);
+      item.append(nameEl, stats);
+
+      item.addEventListener('click', () => {
+        // Pan to this cabinet's own coordinates and pulse its sub-marker
+        const lat = parseFloat(cab.weidu || pos.weidu);
+        const lng = parseFloat(cab.jingdu || pos.jingdu);
+        if (!isNaN(lat) && !isNaN(lng)) map.panTo({ lat, lng });
+        pulseSubMarker(rowIdx);
+      });
+
+      list.appendChild(item);
+    });
+  });
+
+  container.innerHTML = '';
+  container.append(title, list);
+}
+
+function pulseSubMarker(posIdx: number) {
+  const marker = subMarkers[posIdx];
+  if (!marker) return;
+  const el = marker.content as HTMLElement;
+  el.classList.add('cabinet-marker-pulse');
+  setTimeout(() => el.classList.remove('cabinet-marker-pulse'), 1000);
+}
+
+function clearSubMarkers() {
+  subMarkers.forEach((m) => (m.map = null));
+  subMarkers = [];
+}
+
+function addPositionMarkers(positions: CabinetPosition[]) {
+  clearSubMarkers();
+
+  // Flatten all cabinets, one sub-marker per cabinet using its own coordinates
+  const allCabinets = positions.flatMap((pos) =>
+    pos.cabinets.map((c) => ({
+      ...c,
+      jingdu: c.jingdu || pos.jingdu,
+      weidu: c.weidu || pos.weidu,
+    }))
+  );
+
+  if (allCabinets.length <= 1) return;
+
+  allCabinets.forEach((cab, rowIdx) => {
+    const lat = parseFloat(cab.weidu);
+    const lng = parseFloat(cab.jingdu);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const el = document.createElement('div');
+    el.className = 'cabinet-marker';
+    el.innerHTML = `<span class="cabinet-marker-count">${cab.borrow}</span>`;
+
+    const marker = new google.maps.marker.AdvancedMarkerElement({
+      position: { lat, lng },
+      map,
+      content: el,
+      title: cab.cabinetId,
+    });
+
+    marker.addListener('click', () => {
+      const item = document.querySelector<HTMLElement>(`.position-item[data-row-idx="${rowIdx}"]`);
+      if (item) {
+        item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        item.classList.add('position-highlight');
+        setTimeout(() => item.classList.remove('position-highlight'), 1500);
+      }
+    });
+
+    subMarkers.push(marker);
+  });
 }
 
 // Banner close
@@ -207,6 +347,7 @@ function initControls() {
   // Station panel close
   document.getElementById('panel-close')?.addEventListener('click', () => {
     document.getElementById('station-panel')?.classList.add('hidden');
+    clearSubMarkers();
   });
 
   // Geolocation button

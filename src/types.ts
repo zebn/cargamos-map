@@ -70,3 +70,34 @@ export interface ApiResponse {
     code: number;
     list: Station[];
 }
+
+export interface CabinetInfo {
+    id: number;
+    cabinetId: string;
+    shopId: string;
+    type: string;
+    total: number;
+    borrow: number;
+    also: number;
+    status: string;
+    infoStatus: string;
+    signal: string;
+    positionId: number | null;
+    jingdu: string;
+    weidu: string;
+    regtime: string;
+}
+
+export interface CabinetPosition {
+    positionId: number | null;
+    shopId: string;
+    positionName: string;
+    address: string;
+    jingdu: string;
+    weidu: string;
+    cabinets: CabinetInfo[];
+}
+
+export interface CabinetPositionsResponse {
+    data: CabinetPosition[];
+}

@@ -38,6 +38,9 @@ const translations: Record<Lang, Record<string, string>> = {
         'station.online': 'Online',
         'station.offline': 'Offline',
         'station.schedule': 'Horario',
+        'station.positions': 'Zonas del local',
+        'station.positionsLoading': 'Cargando zonas...',
+        'station.cabinets': 'Cabinas',
         // Geolocation
         'geo.error': 'No se pudo obtener tu ubicación',
     },
@@ -73,6 +76,9 @@ const translations: Record<Lang, Record<string, string>> = {
         'station.online': 'Online',
         'station.offline': 'Offline',
         'station.schedule': 'Schedule',
+        'station.positions': 'Zones',
+        'station.positionsLoading': 'Loading zones...',
+        'station.cabinets': 'Cabinets',
         'geo.error': 'Could not get your location',
     },
     ru: {
@@ -107,6 +113,9 @@ const translations: Record<Lang, Record<string, string>> = {
         'station.online': 'Онлайн',
         'station.offline': 'Офлайн',
         'station.schedule': 'Расписание',
+        'station.positions': 'Зоны заведения',
+        'station.positionsLoading': 'Загрузка зон...',
+        'station.cabinets': 'Кабинеты',
         'geo.error': 'Не удалось определить местоположение',
     },
 };
