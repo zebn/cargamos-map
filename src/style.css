@@ -160,6 +160,18 @@ html, body {
   opacity: 0.6;
 }
 
+.pronto-charge .marker-logo {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+  object-fit: contain;
+  padding: 3px;
+}
+
+.pronto-charge .marker-badge {
+  background: #1a1a1a;
+  color: white;
+}
+
 .marker-badge {
   position: absolute;
   top: -6px;

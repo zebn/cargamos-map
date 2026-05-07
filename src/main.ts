@@ -3,6 +3,7 @@ import { fetchStations, fetchAllPriceStrategies, fetchCabinetPositions } from '.
 import type { Station, PriceStrategy, CabinetPosition } from './types';
 import { t, getLang, setLang, onLangChange, LANG_LABELS, type Lang } from './i18n';
 import cargamosLogo from './assets/cargamos-logo.png';
+import prontoChargeLogo from './assets/ProntoCharge_white_h.jpg';
 import './style.css';
 
 const DEFAULT_CENTER = { lat: 38.3452, lng: -0.4815 }; // Alicante
@@ -96,12 +97,14 @@ function updateMarkers(stations: Station[]) {
 
     const isOnline = station.infoStatus === '在线';
     const freeNum = parseInt(station.freeNum) || 0;
+    const isProntoCharge = station.pSfid === '239652998875591';
+    const logo = isProntoCharge ? prontoChargeLogo : cargamosLogo;
 
     const el = document.createElement('div');
-    el.className = `station-marker ${isOnline ? 'online' : 'offline'}`;
+    el.className = `station-marker ${isOnline ? 'online' : 'offline'}${isProntoCharge ? ' pronto-charge' : ''}`;
     el.innerHTML = `
       <div class="marker-icon">
-        <img src="${cargamosLogo}" alt="" class="marker-logo" />
+        <img src="${logo}" alt="" class="marker-logo" />
         <span class="marker-badge">${freeNum}</span>
       </div>
     `;
@@ -143,7 +146,9 @@ function showStationInfo(station: Station) {
   const content = document.getElementById('panel-content')!;
 
   // Use shopBanner if available, otherwise use logo
-  const bannerSrc = station.shopBanner ? encodeURI(station.shopBanner) : cargamosLogo;
+  const bannerSrc = station.shopBanner
+    ? encodeURI(station.shopBanner)
+    : (station.pSfid === '239652998875591' ? prontoChargeLogo : cargamosLogo);
 
   content.innerHTML = `
     <div class="card-header">

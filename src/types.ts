@@ -31,6 +31,7 @@ export interface Station {
     pPriceid: string;
     currencyName: string;
     infoStatus: string;
+    pSfid: string;
 }
 
 export interface PriceStrategy {
