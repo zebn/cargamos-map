@@ -96,6 +96,9 @@ function updateMarkers(stations: Station[]) {
     if (isNaN(lat) || isNaN(lng)) return;
 
     const isOnline = station.infoStatus === '在线';
+    // Hide inactive (offline) stations from the map
+    if (!isOnline) return;
+
     const freeNum = parseInt(station.freeNum) || 0;
     const isProntoCharge = station.pSfid === '239652998875591';
     const logo = isProntoCharge ? prontoChargeLogo : cargamosLogo;
@@ -211,7 +214,8 @@ function showStationInfo(station: Station) {
 
 function renderPositions(container: HTMLElement, positions: CabinetPosition[]) {
   const totalCabinets = positions.reduce((s, p) => s + p.cabinets.length, 0);
-  if (!totalCabinets) {
+  // Only show the zones list when there's more than one cabinet
+  if (totalCabinets <= 1) {
     container.remove();
     return;
   }
@@ -381,6 +385,17 @@ function initControls() {
   faqModal.addEventListener('click', (e) => {
     if (e.target === faqModal) faqModal.classList.add('hidden');
   });
+
+  // Chat — open Zoho SalesIQ chat window (round button on desktop, banner row on mobile)
+  const openChat = () => {
+    try {
+      (window as any).$zoho?.salesiq?.floatwindow?.visible('show');
+    } catch (e) {
+      console.error('Failed to open chat:', e);
+    }
+  };
+  document.getElementById('btn-chat')?.addEventListener('click', openChat);
+  document.getElementById('banner-chat')?.addEventListener('click', openChat);
 
   // Side menu
   const sideMenu = document.getElementById('side-menu')!;

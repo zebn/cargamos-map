@@ -5,6 +5,7 @@ const translations: Record<Lang, Record<string, string>> = {
         // Banner
         'banner.subtitle': 'Alquila un powerbank al instante',
         'banner.download': 'Descargar App',
+        'banner.support': 'Atención al cliente',
         // Controls
         'btn.menu': 'Menú',
         'btn.geolocate': 'Mi ubicación',
@@ -47,6 +48,7 @@ const translations: Record<Lang, Record<string, string>> = {
     en: {
         'banner.subtitle': 'Rent a powerbank instantly',
         'banner.download': 'Download App',
+        'banner.support': 'Customer support',
         'btn.menu': 'Menu',
         'btn.geolocate': 'My location',
         'btn.faq': 'FAQ',
@@ -84,6 +86,7 @@ const translations: Record<Lang, Record<string, string>> = {
     ru: {
         'banner.subtitle': 'Арендуй павербанк мгновенно',
         'banner.download': 'Скачать',
+        'banner.support': 'Поддержка клиентов',
         'btn.menu': 'Меню',
         'btn.geolocate': 'Моё местоположение',
         'btn.faq': 'FAQ',

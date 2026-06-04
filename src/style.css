@@ -104,6 +104,45 @@ html, body {
   opacity: 1;
 }
 
+/* Customer support / chat row (shown on mobile only) */
+.banner-chat {
+  display: none;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px 4px 2px;
+  border-top: 1px solid rgba(26, 26, 26, 0.15);
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  color: #1a1a1a;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.banner-chat-icon {
+  flex-shrink: 0;
+}
+
+.banner-chat-text {
+  flex: 1;
+  text-align: left;
+}
+
+.banner-chat-arrow {
+  font-size: 22px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.banner-chat:active {
+  opacity: 0.7;
+}
+
 /* Map */
 #map {
   position: absolute;
@@ -877,5 +916,15 @@ html, body {
   .banner-btn {
     padding: 6px 12px;
     font-size: 12px;
+  }
+}
+
+/* On mobile: show the support row in the banner, hide the round chat button */
+@media (max-width: 768px) {
+  .banner-chat {
+    display: flex;
+  }
+  #btn-chat {
+    display: none;
   }
 }
