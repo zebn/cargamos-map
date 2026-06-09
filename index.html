@@ -149,23 +149,66 @@
   <!-- Zoho SalesIQ -->
   <script>
     window.$zoho = window.$zoho || {};
+
+    // --- iOS chat-window sizing fix ---------------------------------------
+    // On iOS Safari, Zoho sizes its full-screen mobile chat window inline (via
+    // JS) using a viewport height that includes the area behind the browser
+    // toolbars, so the bottom of the chat (the input box) ends up off-screen.
+    // We force the real visible height onto Zoho's containers. visualViewport
+    // gives the actually-visible area — excluding the toolbars, and excluding
+    // the keyboard when it's open (so the input stays visible while typing).
+    var chatSizingActive = false;
+    function sizeZohoChat() {
+      var h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+      ['zsiq_chat_wrap', 'siq_chatwindow'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.style.setProperty('height', h + 'px', 'important');
+      });
+    }
+    function startChatSizing() {
+      chatSizingActive = true;
+      sizeZohoChat();
+      // Zoho re-applies its own inline height a few times asynchronously right
+      // after opening, so re-assert ours over the next second.
+      var n = 0;
+      var iv = setInterval(function () {
+        if (!chatSizingActive || ++n > 12) { clearInterval(iv); return; }
+        sizeZohoChat();
+      }, 150);
+    }
+    function stopChatSizing() {
+      chatSizingActive = false;
+      ['zsiq_chat_wrap', 'siq_chatwindow'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.style.removeProperty('height');
+      });
+    }
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function () {
+        if (chatSizingActive) sizeZohoChat();
+      });
+    }
+    // ----------------------------------------------------------------------
+
     $zoho.salesiq = $zoho.salesiq || {
       ready: function () {
         try {
           $zoho.salesiq.floatbutton.visible('show');
           $zoho.salesiq.floatwindow.visible('hide');
 
-          // Hide the map while the chat window is open. On real mobile Zoho
-          // switches to its full-screen mode and the map bleeds over the chat
-          // (covering the input box). Toggling a body class avoids that.
+          // Hide the map while the chat window is open (it can bleed over the
+          // chat on mobile) and force the correct visible height on iOS.
           $zoho.salesiq.floatwindow.open(function () {
             document.body.classList.add('chat-open');
+            startChatSizing();
           });
           $zoho.salesiq.floatwindow.close(function () {
             document.body.classList.remove('chat-open');
+            stopChatSizing();
           });
           $zoho.salesiq.floatwindow.minimize(function () {
             document.body.classList.remove('chat-open');
+            stopChatSizing();
           });
         } catch (e) { }
       }
