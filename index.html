@@ -233,7 +233,13 @@
       var wrap = document.getElementById('zsiq_chat_wrap');
       var iframe = document.getElementById('siq_chatwindow');
       [wrap, iframe].forEach(function (el) {
-        if (el) el.style.setProperty('height', large + 'px', 'important');
+        if (el) {
+          el.style.setProperty('height', large + 'px', 'important');
+          // Zoho clamps the wrap with max-height (~100vh), which clips the
+          // iframe's bottom (the input). Remove the clamp so our height wins.
+          el.style.setProperty('max-height', 'none', 'important');
+          el.style.setProperty('min-height', large + 'px', 'important');
+        }
       });
       if (wrap) {
         // Shift the window up so its bottom (the input) aligns with the
