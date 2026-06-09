@@ -204,42 +204,106 @@
     window.$zoho = window.$zoho || {};
 
     // --- iOS chat-window sizing fix ---------------------------------------
-    // On iOS Safari, Zoho sizes its full-screen mobile chat window inline (via
-    // JS) using a viewport height that includes the area behind the browser
-    // toolbars, so the bottom of the chat (the input box) ends up off-screen.
-    // We force the real visible height onto Zoho's containers. visualViewport
-    // gives the actually-visible area — excluding the toolbars, and excluding
-    // the keyboard when it's open (so the input stays visible while typing).
+    // On iOS Safari, Zoho lays out its chat *content* (inside a cross-origin
+    // iframe) against the "large" viewport — i.e. 100vh / position:fixed
+    // ignore Safari's bottom toolbar — so the input bar sits ~toolbar-height
+    // below the visible area and gets clipped. We can't reach inside the
+    // iframe, so instead we make the iframe as tall as that large viewport
+    // (so its content isn't clipped) and shift the whole window UP so the
+    // input lands at the bottom of the actually-visible area. The shift hides
+    // Zoho's own header (with its close X), so we render our own close button.
     var chatSizingActive = false;
+
+    // iOS 100vh == the large (toolbars-hidden) viewport that Zoho's content
+    // assumes. Measure it with a probe rather than guessing.
+    function largeViewportHeight() {
+      var probe = document.createElement('div');
+      probe.style.cssText =
+        'position:fixed;top:0;left:0;width:0;height:100vh;visibility:hidden;pointer-events:none';
+      document.body.appendChild(probe);
+      var h = probe.getBoundingClientRect().height;
+      probe.remove();
+      return h || window.innerHeight;
+    }
+
     function sizeZohoChat() {
-      var h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
-      ['zsiq_chat_wrap', 'siq_chatwindow'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) el.style.setProperty('height', h + 'px', 'important');
+      var visible = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+      var large = Math.max(largeViewportHeight(), visible);
+      var delta = Math.round(large - visible); // how far the input is below the fold
+      var wrap = document.getElementById('zsiq_chat_wrap');
+      var iframe = document.getElementById('siq_chatwindow');
+      [wrap, iframe].forEach(function (el) {
+        if (el) el.style.setProperty('height', large + 'px', 'important');
       });
+      if (wrap) {
+        // Shift the window up so its bottom (the input) aligns with the
+        // visible bottom. Top header scrolls off behind the address bar.
+        wrap.style.setProperty('top', (-delta) + 'px', 'important');
+        wrap.style.setProperty('bottom', 'auto', 'important');
+      }
+      // Keep our close button above Zoho's (re-injected) window.
+      if (chatCloseBtn && chatCloseBtn.style.display === 'block') {
+        document.body.appendChild(chatCloseBtn);
+      }
     }
     function startChatSizing() {
       chatSizingActive = true;
       sizeZohoChat();
-      // Zoho re-applies its own inline height a few times asynchronously right
-      // after opening, so re-assert ours over the next second.
+      showChatClose();
+      // Zoho re-applies its own inline geometry a few times asynchronously
+      // right after opening, so re-assert ours over the next ~2 seconds.
       var n = 0;
       var iv = setInterval(function () {
-        if (!chatSizingActive || ++n > 12) { clearInterval(iv); return; }
+        if (!chatSizingActive || ++n > 16) { clearInterval(iv); return; }
         sizeZohoChat();
       }, 150);
     }
     function stopChatSizing() {
       chatSizingActive = false;
+      hideChatClose();
       ['zsiq_chat_wrap', 'siq_chatwindow'].forEach(function (id) {
         var el = document.getElementById(id);
-        if (el) el.style.removeProperty('height');
+        if (el) {
+          el.style.removeProperty('height');
+          el.style.removeProperty('top');
+          el.style.removeProperty('bottom');
+        }
       });
     }
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', function () {
         if (chatSizingActive) sizeZohoChat();
       });
+    }
+
+    // Our own close button (Zoho's header X is shifted off-screen).
+    var chatCloseBtn = null;
+    function ensureChatClose() {
+      if (chatCloseBtn) return chatCloseBtn;
+      var b = document.createElement('button');
+      b.setAttribute('aria-label', 'Cerrar chat');
+      b.textContent = '×';
+      b.style.cssText =
+        'position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:12px;' +
+        'z-index:2147483647;width:40px;height:40px;border:none;border-radius:50%;' +
+        'background:rgba(0,0,0,.55);color:#fff;font:300 26px/40px system-ui;' +
+        'text-align:center;padding:0;cursor:pointer;display:none';
+      b.addEventListener('click', function () {
+        try { window.$zoho && $zoho.salesiq && $zoho.salesiq.floatwindow.visible('hide'); } catch (e) {}
+        document.body.classList.remove('chat-open');
+        stopChatSizing();
+      });
+      (document.body || document.documentElement).appendChild(b);
+      chatCloseBtn = b;
+      return b;
+    }
+    function showChatClose() {
+      var b = ensureChatClose();
+      b.style.display = 'block';
+      document.body.appendChild(b); // keep above Zoho's window
+    }
+    function hideChatClose() {
+      if (chatCloseBtn) chatCloseBtn.style.display = 'none';
     }
     // ----------------------------------------------------------------------
 
@@ -280,15 +344,8 @@
     div[id^="titlediv"] {
       display: none !important;
     }
-
-    /* iOS Safari sizes the mobile chat window by the "large" viewport, so the
-       bottom (input box) ends up off-screen. Pin it to the dynamic viewport
-       height (the actually-visible area) so the whole chat fits. */
-    #zsiq_chat_wrap,
-    #siq_chatwindow {
-      height: 100dvh !important;
-      max-height: 100dvh !important;
-    }
+    /* NB: chat-window height/position are driven by JS (see the iOS sizing
+       fix above) — no CSS height here, so it can't clamp the JS values. */
   </style>
 </body>
 
