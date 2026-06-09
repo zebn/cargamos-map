@@ -20,7 +20,13 @@
       // Eruda: an on-screen devtools console for mobile (no Mac needed).
       var s = document.createElement('script');
       s.src = 'https://cdn.jsdelivr.net/npm/eruda';
-      s.onload = function () { try { window.eruda && window.eruda.init(); } catch (e) {} };
+      s.onload = function () {
+        try {
+          window.eruda && window.eruda.init();
+          var er = document.getElementById('eruda');
+          if (er) er.style.zIndex = '2147483647';
+        } catch (e) {}
+      };
       document.head.appendChild(s);
 
       // Live readout of the viewport + Zoho chat-window dimensions.
@@ -48,6 +54,11 @@
           '\nchat-open=' + document.body.classList.contains('chat-open') +
           '\n' + dim('zsiq_chat_wrap') +
           '\n' + dim('siq_chatwindow');
+        // Zoho injects its full-screen window later in the DOM and with the
+        // same max z-index, so re-append our overlays to keep them on top.
+        if (badge.parentNode) document.body.appendChild(badge);
+        var er = document.getElementById('eruda');
+        if (er) document.body.appendChild(er);
       }
       setInterval(tick, 400);
       if (window.visualViewport) window.visualViewport.addEventListener('resize', tick);
