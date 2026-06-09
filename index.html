@@ -184,6 +184,15 @@
     div[id^="titlediv"] {
       display: none !important;
     }
+
+    /* iOS Safari sizes the mobile chat window by the "large" viewport, so the
+       bottom (input box) ends up off-screen. Pin it to the dynamic viewport
+       height (the actually-visible area) so the whole chat fits. */
+    #zsiq_chat_wrap,
+    #siq_chatwindow {
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+    }
   </style>
 </body>
 
