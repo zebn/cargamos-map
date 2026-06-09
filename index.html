@@ -154,6 +154,19 @@
         try {
           $zoho.salesiq.floatbutton.visible('show');
           $zoho.salesiq.floatwindow.visible('hide');
+
+          // Hide the map while the chat window is open. On real mobile Zoho
+          // switches to its full-screen mode and the map bleeds over the chat
+          // (covering the input box). Toggling a body class avoids that.
+          $zoho.salesiq.floatwindow.open(function () {
+            document.body.classList.add('chat-open');
+          });
+          $zoho.salesiq.floatwindow.close(function () {
+            document.body.classList.remove('chat-open');
+          });
+          $zoho.salesiq.floatwindow.minimize(function () {
+            document.body.classList.remove('chat-open');
+          });
         } catch (e) { }
       }
     };
