@@ -386,13 +386,9 @@ function initControls() {
     if (e.target === faqModal) faqModal.classList.add('hidden');
   });
 
-  // Chat — open Zoho SalesIQ chat window (round button on desktop, banner row on mobile)
+  // Chat — open the standalone support chat page (round button on desktop, banner row on mobile)
   const openChat = () => {
-    try {
-      (window as any).$zoho?.salesiq?.floatwindow?.visible('show');
-    } catch (e) {
-      console.error('Failed to open chat:', e);
-    }
+    window.open('https://cargamos.eu/chat', '_blank', 'noopener');
   };
   document.getElementById('btn-chat')?.addEventListener('click', openChat);
   document.getElementById('banner-chat')?.addEventListener('click', openChat);

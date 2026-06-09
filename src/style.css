@@ -150,8 +150,6 @@ html, body {
   left: 0;
   width: 100%;
   height: calc(100vh - 60px);
-  z-index: 0;
-  isolation: isolate;
   transition: top 0.3s ease, height 0.3s ease;
 }
 
@@ -167,14 +165,6 @@ html, body {
 #map.no-banner {
   top: 0;
   height: 100vh;
-}
-
-/* While the Zoho chat window is open, hide the map so it can't overlap the
-   chat on mobile. visibility (not display) keeps the layout, so Google Maps
-   needs no resize when the chat closes. */
-body.chat-open #map,
-body.chat-open .map-controls {
-  visibility: hidden;
 }
 
 /* Station Markers */
