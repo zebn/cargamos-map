@@ -12,6 +12,48 @@
 </head>
 
 <body>
+  <!-- Debug tooling (only when the page is opened with ?debug) -->
+  <script>
+    (function () {
+      if (!/[?&]debug/.test(location.search)) return;
+
+      // Eruda: an on-screen devtools console for mobile (no Mac needed).
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+      s.onload = function () { try { window.eruda && window.eruda.init(); } catch (e) {} };
+      document.head.appendChild(s);
+
+      // Live readout of the viewport + Zoho chat-window dimensions.
+      var badge = document.createElement('div');
+      badge.style.cssText =
+        'position:fixed;top:64px;left:8px;z-index:2147483647;background:rgba(0,0,0,.82);' +
+        'color:#0f0;font:11px/1.45 monospace;padding:6px 8px;border-radius:6px;' +
+        'white-space:pre;pointer-events:none;max-width:92vw';
+      document.addEventListener('DOMContentLoaded', function () { document.body.appendChild(badge); });
+
+      function dim(id) {
+        var el = document.getElementById(id);
+        if (!el) return id + ': (none)';
+        var r = el.getBoundingClientRect();
+        return id + ': rect.top=' + Math.round(r.top) + ' rect.h=' + Math.round(r.height) +
+          '\n  inline.h=' + (el.style.height || '-') +
+          ' computed.h=' + getComputedStyle(el).height;
+      }
+      function tick() {
+        var vv = window.visualViewport;
+        badge.textContent =
+          'innerH=' + window.innerHeight +
+          '  vv.h=' + (vv ? Math.round(vv.height) : '-') +
+          '  vv.offTop=' + (vv ? Math.round(vv.offsetTop) : '-') +
+          '\nchat-open=' + document.body.classList.contains('chat-open') +
+          '\n' + dim('zsiq_chat_wrap') +
+          '\n' + dim('siq_chatwindow');
+      }
+      setInterval(tick, 400);
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', tick);
+    })();
+  </script>
+
   <!-- App Download Banner -->
   <div id="app-banner">
     <div class="banner-content">
