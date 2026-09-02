@@ -1,4 +1,4 @@
-import type { ApiResponse, PriceStrategy, PriceStrategyResponse, CabinetPosition, CabinetPositionsResponse } from './types';
+import type { ApiResponse, PriceStrategy, PriceStrategyResponse, CabinetPosition, CabinetPositionsResponse, StationCard } from './types';
 
 const API_URL = 'https://m.cargamos.eu/cdb-app-api/v1/app/cdb/shop/listnear';
 const PRICE_API_URL = 'https://cargamos-report.duckdns.org/api/price-strategies';
@@ -69,4 +69,33 @@ export async function fetchCabinetPositions(shopId: string): Promise<CabinetPosi
     const data: CabinetPositionsResponse = await response.json();
 
     return data.data;
+}
+
+/**
+ * Photos and location text for one venue, via the same-origin edge proxy.
+ *
+ * The proxy answers 501 until `REPORT_API_KEY` is set on the Vercel project,
+ * and 404 for a venue the report backend does not know, so every failure is
+ * soft: the caller keeps rendering the plain listnear card.
+ */
+const cardCache = new Map<string, StationCard | null>();
+
+export async function fetchStationCard(shopId: string): Promise<StationCard | null> {
+    if (cardCache.has(shopId)) return cardCache.get(shopId) ?? null;
+
+    let card: StationCard | null = null;
+    try {
+        const response = await fetch(`/api/station-card?id=${encodeURIComponent(shopId)}`);
+        // Under `vite dev` nothing serves this path and the SPA fallback answers
+        // with HTML, so the shape is checked rather than assumed.
+        if (response.ok) {
+            const body = await response.json();
+            if (body && Array.isArray(body.photos)) card = body as StationCard;
+        }
+    } catch {
+        card = null;
+    }
+
+    cardCache.set(shopId, card);
+    return card;
 }

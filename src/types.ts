@@ -102,3 +102,19 @@ export interface CabinetPosition {
 export interface CabinetPositionsResponse {
     data: CabinetPosition[];
 }
+
+/**
+ * The customer-facing half of the report backend's venue card, as reshaped by
+ * `/api/station-card`. Everything is optional: a venue with no gallery and no
+ * description still renders, it just falls back to the listnear banner.
+ */
+export interface StationCard {
+    id: string;
+    photos: string[];
+    description: string | null;
+    /** Where the cabinet stands inside the venue ("junto a la barra"). */
+    devicePlacement: string | null;
+    address: string | null;
+    hoursText: string | null;
+    positions: { name: string | null; lat: number | null; lng: number | null }[];
+}

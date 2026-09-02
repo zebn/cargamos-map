@@ -1,13 +1,14 @@
-﻿import { MarkerClusterer } from '@googlemaps/markerclusterer';
-import { fetchStations, fetchAllPriceStrategies, fetchCabinetPositions } from './api';
-import type { Station, PriceStrategy, CabinetPosition } from './types';
+import { MarkerClusterer } from '@googlemaps/markerclusterer';
+import { fetchStations, fetchAllPriceStrategies, fetchCabinetPositions, fetchStationCard } from './api';
+import type { Station, PriceStrategy, CabinetPosition, StationCard } from './types';
 import { t, getLang, setLang, onLangChange, LANG_LABELS, type Lang } from './i18n';
+import { CITIES, DEFAULT_CITY, BLOCKED_CABINET_IDS, getSavedCity, saveCity, isPublicStation, type City } from './config';
 import cargamosLogo from './assets/cargamos-logo.png';
 import prontoChargeLogo from './assets/ProntoCharge_white_h.jpg';
 import './style.css';
 
-const DEFAULT_CENTER = { lat: 38.3452, lng: -0.4815 }; // Alicante
-const DEFAULT_ZOOM = 13;
+const ONLINE = '在线';
+const CHAT_URL = 'https://cargamos.eu/chat';
 
 let map: google.maps.Map;
 let markers: google.maps.marker.AdvancedMarkerElement[] = [];
@@ -16,13 +17,20 @@ let clusterer: MarkerClusterer;
 let debounceTimer: ReturnType<typeof setTimeout>;
 let priceMap: Map<string, PriceStrategy> = new Map();
 
+/** Bumped on every station card open so a slow fetch can't paint over a newer card. */
+let cardToken = 0;
+
 async function initMap() {
   const { Map } = await google.maps.importLibrary('maps') as google.maps.MapsLibrary;
   await google.maps.importLibrary('marker');
 
+  // Land on the city the visitor picked last time; geolocation overrides it
+  // below once the browser answers.
+  const start = getSavedCity() ?? DEFAULT_CITY;
+
   map = new Map(document.getElementById('map')!, {
-    center: DEFAULT_CENTER,
-    zoom: DEFAULT_ZOOM,
+    center: { lat: start.lat, lng: start.lng },
+    zoom: start.zoom,
     mapId: 'cargamos-map',
     gestureHandling: 'greedy',
     disableDefaultUI: false,
@@ -55,25 +63,36 @@ async function initMap() {
     debounceTimer = setTimeout(loadStations, 500);
   });
 
-  // Try to get user's location
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        map.setCenter(userPos);
-      },
-      () => {
-        // Use default center (Madrid)
-      }
-    );
+  locateOrAskForCity();
+}
+
+/**
+ * Centre on the visitor if the browser will say where they are; otherwise ask
+ * which city they are in — but only the first time, since a saved city is an
+ * answer they already gave.
+ */
+function locateOrAskForCity() {
+  const fallback = () => {
+    if (!getSavedCity()) openCityPicker();
+  };
+
+  if (!navigator.geolocation) {
+    fallback();
+    return;
   }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => map.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+    fallback,
+    { timeout: 8000, maximumAge: 600000 },
+  );
 }
 
 async function loadStations() {
   const center = map.getCenter();
   if (!center) return;
 
-  const zoom = map.getZoom() || DEFAULT_ZOOM;
+  const zoom = map.getZoom() || DEFAULT_CITY.zoom;
   const apiZoom = zoom <= 8 ? 1 : zoom <= 11 ? 2 : zoom <= 14 ? 4 : 6;
 
   try {
@@ -85,26 +104,32 @@ async function loadStations() {
   }
 }
 
+/** Online, publicly listed venues — what a customer may actually walk to. */
+function visibleStations(stations: Station[]): Station[] {
+  return stations.filter((station) => {
+    const lat = parseFloat(station.latitude);
+    const lng = parseFloat(station.longitude);
+    if (isNaN(lat) || isNaN(lng)) return false;
+    if (station.infoStatus !== ONLINE) return false;
+    return isPublicStation(station.newID, station.shopName, lat, lng);
+  });
+}
+
 function updateMarkers(stations: Station[]) {
   clusterer.clearMarkers();
   markers.forEach((m) => (m.map = null));
   markers = [];
 
-  stations.forEach((station) => {
+  visibleStations(stations).forEach((station) => {
     const lat = parseFloat(station.latitude);
     const lng = parseFloat(station.longitude);
-    if (isNaN(lat) || isNaN(lng)) return;
-
-    const isOnline = station.infoStatus === '在线';
-    // Hide inactive (offline) stations from the map
-    if (!isOnline) return;
 
     const freeNum = parseInt(station.freeNum) || 0;
     const isProntoCharge = station.pSfid === '239652998875591';
     const logo = isProntoCharge ? prontoChargeLogo : cargamosLogo;
 
     const el = document.createElement('div');
-    el.className = `station-marker ${isOnline ? 'online' : 'offline'}${isProntoCharge ? ' pronto-charge' : ''}`;
+    el.className = `station-marker online${isProntoCharge ? ' pronto-charge' : ''}`;
     el.innerHTML = `
       <div class="marker-icon">
         <img src="${logo}" alt="" class="marker-logo" />
@@ -134,8 +159,9 @@ function decodeHtmlEntities(text: string): string {
 
 function showStationInfo(station: Station) {
   clearSubMarkers();
+  const token = ++cardToken;
 
-  const isOnline = station.infoStatus === '在线';
+  const isOnline = station.infoStatus === ONLINE;
   const strategy = priceMap.get(String(station.pPriceid));
   const freeMinutes = strategy ? (parseInt(strategy.p_freeuse_minute) || parseInt(strategy.p_first_minutes) || 0) : (parseInt(station.pMian) || 0);
   const pricePerUnit = strategy ? strategy.p_price : station.pJifei;
@@ -183,6 +209,7 @@ function showStationInfo(station: Station) {
       <p>${t('station.freeMinutes', String(freeMinutes), currency, pricePerUnit, unitMinutes)}</p>
       <p>${t('station.maxPrice', currency, maxPrice)}</p>
     </div>
+    <div class="card-notes" id="card-notes"></div>
     <div class="card-positions" id="card-positions">
       <p class="positions-loading">${t('station.positionsLoading')}</p>
     </div>
@@ -196,10 +223,22 @@ function showStationInfo(station: Station) {
   content.querySelector('.card-address')!.textContent = address;
 
   panel.classList.remove('hidden');
+  panel.scrollTop = 0;
+
+  // Gallery and location text come from the report backend; the card above is
+  // already usable without them.
+  fetchStationCard(station.newID).then((card) => {
+    if (token !== cardToken || !card) return;
+    renderGallery(content, card, bannerSrc);
+    renderNotes(content, card);
+  }).catch((err) => {
+    console.error('[card] failed:', err);
+  });
 
   // Load cabinet positions asynchronously
   console.log('[positions] fetching for shopId:', station.newID);
   fetchCabinetPositions(station.newID).then((positions) => {
+    if (token !== cardToken) return;
     console.log('[positions] received:', positions);
     const positionsEl = document.getElementById('card-positions');
     if (!positionsEl) return;
@@ -212,8 +251,122 @@ function showStationInfo(station: Station) {
   });
 }
 
+/**
+ * The venue's photos.
+ *
+ * One photo stays in the small header thumbnail the card has always used; a
+ * real gallery takes over the top of the card and the thumbnail steps aside,
+ * so the same image is never shown twice.
+ */
+function renderGallery(content: HTMLElement, card: StationCard, currentThumb: string) {
+  if (card.photos.length === 0) return;
+
+  const thumb = content.querySelector<HTMLImageElement>('.card-photo img');
+
+  if (card.photos.length === 1) {
+    // Only swap in the gallery photo when the card is showing the placeholder
+    // logo — the listnear banner is the same picture in practice.
+    if (thumb && !currentThumb.startsWith('http')) thumb.src = card.photos[0];
+    return;
+  }
+
+  const photoBox = content.querySelector<HTMLElement>('.card-photo');
+  const status = photoBox?.querySelector<HTMLElement>('.card-status');
+  const header = content.querySelector('.card-header');
+
+  const gallery = document.createElement('div');
+  gallery.className = 'card-gallery';
+
+  const track = document.createElement('div');
+  track.className = 'card-gallery-track';
+
+  const dots = document.createElement('div');
+  dots.className = 'card-gallery-dots';
+
+  const counter = document.createElement('span');
+  counter.className = 'card-gallery-counter';
+  counter.textContent = t('station.photoCounter', '1', String(card.photos.length));
+
+  card.photos.forEach((url, i) => {
+    const slide = document.createElement('div');
+    slide.className = 'card-gallery-slide';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = '';
+    img.loading = i === 0 ? 'eager' : 'lazy';
+    // A dead URL would otherwise leave a broken-image slide in the strip.
+    img.addEventListener('error', () => slide.remove());
+    slide.appendChild(img);
+    track.appendChild(slide);
+
+    const dot = document.createElement('span');
+    dot.className = `card-gallery-dot${i === 0 ? ' active' : ''}`;
+    dots.appendChild(dot);
+  });
+
+  track.addEventListener('scroll', () => {
+    const width = track.clientWidth || 1;
+    const index = Math.min(card.photos.length - 1, Math.round(track.scrollLeft / width));
+    counter.textContent = t('station.photoCounter', String(index + 1), String(card.photos.length));
+    dots.querySelectorAll('.card-gallery-dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === index);
+    });
+  }, { passive: true });
+
+  gallery.append(track, dots, counter);
+  content.insertBefore(gallery, content.firstChild);
+
+  // The thumbnail is now redundant, but the online badge it carried is not.
+  photoBox?.remove();
+  if (status && header) {
+    status.classList.add('card-status-inline');
+    content.querySelector('.card-title')?.prepend(status);
+  }
+}
+
+/** The free-text venue description and the "where exactly it stands" note. */
+function renderNotes(content: HTMLElement, card: StationCard) {
+  const container = content.querySelector<HTMLElement>('#card-notes');
+  if (!container) return;
+
+  const notes: Array<{ title: string; text: string; kind: string }> = [];
+  if (card.devicePlacement) {
+    notes.push({ title: t('station.placement'), text: card.devicePlacement, kind: 'placement' });
+  }
+  if (card.description) {
+    notes.push({ title: t('station.about'), text: card.description, kind: 'about' });
+  }
+
+  if (notes.length === 0) {
+    container.remove();
+    return;
+  }
+
+  notes.forEach((note) => {
+    const box = document.createElement('div');
+    box.className = `card-note ${note.kind}`;
+
+    const title = document.createElement('div');
+    title.className = 'card-note-title';
+    title.textContent = note.title;
+
+    const text = document.createElement('div');
+    text.className = 'card-note-text';
+    text.textContent = note.text;
+
+    box.append(title, text);
+    container.appendChild(box);
+  });
+}
+
 function renderPositions(container: HTMLElement, positions: CabinetPosition[]) {
-  const totalCabinets = positions.reduce((s, p) => s + p.cabinets.length, 0);
+  // Internal units never appear in the public zone list either.
+  const publicPositions = positions.map((pos) => ({
+    ...pos,
+    cabinets: pos.cabinets.filter((cab) => !BLOCKED_CABINET_IDS.has(cab.cabinetId)),
+  }));
+
+  const totalCabinets = publicPositions.reduce((s, p) => s + p.cabinets.length, 0);
   // Only show the zones list when there's more than one cabinet
   if (totalCabinets <= 1) {
     container.remove();
@@ -229,7 +382,7 @@ function renderPositions(container: HTMLElement, positions: CabinetPosition[]) {
 
   // Render each cabinet as a row; store positionIndex so clicking can highlight the sub-marker
   let globalIdx = 0;
-  positions.forEach((pos, posIdx) => {
+  publicPositions.forEach((pos, posIdx) => {
     pos.cabinets.forEach((cab) => {
       const rowIdx = globalIdx++;
       const item = document.createElement('div');
@@ -247,17 +400,17 @@ function renderPositions(container: HTMLElement, positions: CabinetPosition[]) {
 
       const availEl = document.createElement('span');
       availEl.className = 'position-stat avail';
-      availEl.textContent = `\uD83D\uDD0B ${cab.borrow}`;
+      availEl.textContent = `🔋 ${cab.borrow}`;
       availEl.title = t('station.available');
 
       const slotsEl = document.createElement('span');
       slotsEl.className = 'position-stat slots';
-      slotsEl.textContent = `\uD83D\uDCE5 ${cab.also}`;
+      slotsEl.textContent = `📥 ${cab.also}`;
       slotsEl.title = t('station.freeSlots');
 
       const onlineEl = document.createElement('span');
-      onlineEl.className = `position-stat ${cab.infoStatus === '\u5728\u7EBF' ? 'pos-online' : 'pos-offline'}`;
-      onlineEl.textContent = cab.infoStatus === '\u5728\u7EBF' ? t('station.online') : t('station.offline');
+      onlineEl.className = `position-stat ${cab.infoStatus === ONLINE ? 'pos-online' : 'pos-offline'}`;
+      onlineEl.textContent = cab.infoStatus === ONLINE ? t('station.online') : t('station.offline');
 
       stats.append(availEl, slotsEl, onlineEl);
       item.append(nameEl, stats);
@@ -296,11 +449,13 @@ function addPositionMarkers(positions: CabinetPosition[]) {
 
   // Flatten all cabinets, one sub-marker per cabinet using its own coordinates
   const allCabinets = positions.flatMap((pos) =>
-    pos.cabinets.map((c) => ({
-      ...c,
-      jingdu: c.jingdu || pos.jingdu,
-      weidu: c.weidu || pos.weidu,
-    }))
+    pos.cabinets
+      .filter((c) => !BLOCKED_CABINET_IDS.has(c.cabinetId))
+      .map((c) => ({
+        ...c,
+        jingdu: c.jingdu || pos.jingdu,
+        weidu: c.weidu || pos.weidu,
+      }))
   );
 
   if (allCabinets.length <= 1) return;
@@ -334,6 +489,27 @@ function addPositionMarkers(positions: CabinetPosition[]) {
   });
 }
 
+/**
+ * The banner is two rows tall on mobile and one on desktop, and it reflows
+ * again when the font loads or the phone rotates. Publishing its real height
+ * is what keeps the map and the round controls clear of it.
+ */
+function initBannerHeight() {
+  const banner = document.getElementById('app-banner');
+  if (!banner) return;
+
+  const sync = () => {
+    const height = banner.classList.contains('hidden') ? 0 : banner.getBoundingClientRect().height;
+    document.documentElement.style.setProperty('--banner-h', `${Math.round(height)}px`);
+  };
+
+  new ResizeObserver(sync).observe(banner);
+  window.addEventListener('resize', sync);
+  window.addEventListener('orientationchange', sync);
+  document.fonts?.ready.then(sync);
+  sync();
+}
+
 // Banner close
 function initBanner() {
   const closeBtn = document.getElementById('banner-close');
@@ -342,6 +518,7 @@ function initBanner() {
   closeBtn?.addEventListener('click', () => {
     banner?.classList.add('hidden');
     document.getElementById('map')?.classList.add('no-banner');
+    document.documentElement.style.setProperty('--banner-h', '0px');
   });
 
   // Detect platform for download link
@@ -350,6 +527,278 @@ function initBanner() {
   if (/android/.test(ua)) {
     link.href = 'https://play.google.com/store/apps/details?id=com.cargamos.charge';
   }
+
+  initBannerHeight();
+}
+
+function openChat() {
+  window.open(CHAT_URL, '_blank', 'noopener');
+}
+
+// ---------------------------------------------------------------------------
+// City picker
+// ---------------------------------------------------------------------------
+
+function goToCity(city: City) {
+  saveCity(city);
+  map?.setCenter({ lat: city.lat, lng: city.lng });
+  map?.setZoom(city.zoom);
+}
+
+function openCityPicker() {
+  const modal = document.getElementById('city-modal');
+  if (!modal) return;
+  const saved = getSavedCity();
+  modal.querySelectorAll<HTMLElement>('.city-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.city === saved?.id);
+  });
+  modal.classList.remove('hidden');
+}
+
+function closeCityPicker() {
+  document.getElementById('city-modal')?.classList.add('hidden');
+}
+
+function initCityPicker() {
+  const modal = document.getElementById('city-modal')!;
+  const list = document.getElementById('city-list')!;
+
+  CITIES.forEach((city) => {
+    const btn = document.createElement('button');
+    btn.className = 'city-btn';
+    btn.dataset.city = city.id;
+    btn.textContent = city.name;
+    btn.addEventListener('click', () => {
+      goToCity(city);
+      closeCityPicker();
+    });
+    list.appendChild(btn);
+  });
+
+  const locateBtn = document.getElementById('city-locate') as HTMLButtonElement | null;
+  locateBtn?.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      alert(t('geo.error'));
+      return;
+    }
+    locateBtn.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        locateBtn.disabled = false;
+        map?.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        map?.setZoom(15);
+        closeCityPicker();
+      },
+      () => {
+        locateBtn.disabled = false;
+        alert(t('geo.error'));
+      },
+    );
+  });
+
+  document.getElementById('city-close')?.addEventListener('click', closeCityPicker);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeCityPicker();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Return assistant — "¿Dónde puedo devolver el powerbank?"
+// ---------------------------------------------------------------------------
+
+const EARTH_RADIUS_M = 6371000;
+
+function distanceMeters(from: google.maps.LatLngLiteral, to: google.maps.LatLngLiteral): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(to.lat - from.lat);
+  const dLng = toRad(to.lng - from.lng);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(a));
+}
+
+function formatDistance(meters: number): string {
+  return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
+}
+
+function botThread(): HTMLElement {
+  return document.getElementById('bot-thread')!;
+}
+
+function botSay(text: string, from: 'bot' | 'user' = 'bot'): HTMLElement {
+  const msg = document.createElement('div');
+  msg.className = `bot-msg from-${from}`;
+  msg.textContent = text;
+  const thread = botThread();
+  thread.appendChild(msg);
+  thread.scrollTop = thread.scrollHeight;
+  return msg;
+}
+
+function botChoices(options: Array<{ label: string; onPick: () => void }>): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'bot-choices';
+  options.forEach((option) => {
+    const btn = document.createElement('button');
+    btn.className = 'bot-choice';
+    btn.textContent = option.label;
+    btn.addEventListener('click', () => {
+      row.remove();
+      botSay(option.label, 'user');
+      option.onPick();
+    });
+    row.appendChild(btn);
+  });
+  const thread = botThread();
+  thread.appendChild(row);
+  thread.scrollTop = thread.scrollHeight;
+  return row;
+}
+
+function openBot() {
+  const modal = document.getElementById('bot-modal');
+  if (!modal) return;
+  botThread().innerHTML = '';
+  modal.classList.remove('hidden');
+
+  botSay(t('bot.question'), 'user');
+  startReturnLookup();
+}
+
+function closeBot() {
+  document.getElementById('bot-modal')?.classList.add('hidden');
+}
+
+/** Locate the visitor if we can, otherwise fall back to picking a city. */
+function startReturnLookup() {
+  if (!navigator.geolocation) {
+    askBotCity();
+    return;
+  }
+
+  const status = botSay(t('bot.locating'));
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      status.remove();
+      showReturnPoints({ lat: pos.coords.latitude, lng: pos.coords.longitude }, null);
+    },
+    () => {
+      status.remove();
+      askBotCity();
+    },
+    { timeout: 8000, maximumAge: 600000 },
+  );
+}
+
+function askBotCity() {
+  botSay(t('bot.askCity'));
+  botChoices(CITIES.map((city) => ({
+    label: city.name,
+    onPick: () => showReturnPoints({ lat: city.lat, lng: city.lng }, city),
+  })));
+}
+
+/**
+ * The nearest venues that can physically take a powerbank back: online, public
+ * and with at least one empty slot, straight from the same live feed the map
+ * markers are drawn from.
+ */
+async function showReturnPoints(origin: google.maps.LatLngLiteral, city: City | null) {
+  const typing = document.createElement('div');
+  typing.className = 'bot-typing';
+  typing.textContent = t('bot.searching');
+  botThread().appendChild(typing);
+
+  let stations: Station[] = [];
+  try {
+    const data = await fetchStations(origin.lat, origin.lng, 4);
+    stations = visibleStations(data.list);
+  } catch (err) {
+    console.error('[bot] station lookup failed:', err);
+  }
+  typing.remove();
+
+  const nearest = stations
+    .filter((station) => Number(station.canReturnNum) > 0)
+    .map((station) => ({
+      station,
+      distance: distanceMeters(origin, {
+        lat: parseFloat(station.latitude),
+        lng: parseFloat(station.longitude),
+      }),
+    }))
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 5);
+
+  if (nearest.length === 0) {
+    botSay(t('bot.noResults'));
+    offerAnotherSearch();
+    return;
+  }
+
+  botSay(city ? t('bot.nearCity', city.name) : t('bot.nearYou'));
+
+  const results = document.createElement('div');
+  results.className = 'bot-results';
+
+  nearest.forEach(({ station, distance }) => {
+    const row = document.createElement('button');
+    row.className = 'bot-result';
+
+    const main = document.createElement('div');
+    main.className = 'bot-result-main';
+
+    const name = document.createElement('div');
+    name.className = 'bot-result-name';
+    name.textContent = decodeHtmlEntities(station.shopName);
+
+    const meta = document.createElement('div');
+    meta.className = 'bot-result-meta';
+    meta.textContent = [formatDistance(distance), decodeHtmlEntities(station.shopAddress1 || station.shopAddress)]
+      .filter(Boolean)
+      .join(' · ');
+
+    main.append(name, meta);
+
+    const slots = document.createElement('div');
+    slots.className = 'bot-result-slots';
+    const count = document.createElement('strong');
+    count.textContent = String(station.canReturnNum);
+    const label = document.createElement('span');
+    label.textContent = t('bot.slots');
+    slots.append(count, label);
+
+    row.append(main, slots);
+    row.addEventListener('click', () => {
+      closeBot();
+      map?.setCenter({ lat: parseFloat(station.latitude), lng: parseFloat(station.longitude) });
+      map?.setZoom(16);
+      showStationInfo(station);
+    });
+
+    results.appendChild(row);
+  });
+
+  botThread().appendChild(results);
+  offerAnotherSearch();
+}
+
+function offerAnotherSearch() {
+  const options = [{ label: t('bot.otherCity'), onPick: askBotCity }];
+  if (navigator.geolocation) {
+    options.unshift({ label: t('bot.useLocation'), onPick: startReturnLookup });
+  }
+  botChoices(options);
+}
+
+function initBot() {
+  const modal = document.getElementById('bot-modal')!;
+  document.getElementById('bot-close')?.addEventListener('click', closeBot);
+  document.getElementById('bot-human')?.addEventListener('click', openChat);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeBot();
+  });
 }
 
 function initControls() {
@@ -375,21 +824,37 @@ function initControls() {
 
   // FAQ button
   const faqModal = document.getElementById('faq-modal')!;
-  document.getElementById('btn-faq')?.addEventListener('click', () => faqModal.classList.remove('hidden'));
+  const openFaq = () => faqModal.classList.remove('hidden');
+  document.getElementById('btn-faq')?.addEventListener('click', openFaq);
   document.getElementById('faq-close')?.addEventListener('click', () => faqModal.classList.add('hidden'));
   document.getElementById('menu-faq')?.addEventListener('click', (e) => {
     e.preventDefault();
     closeSideMenu();
-    faqModal.classList.remove('hidden');
+    openFaq();
   });
   faqModal.addEventListener('click', (e) => {
     if (e.target === faqModal) faqModal.classList.add('hidden');
   });
 
+  // Return assistant, from the FAQ answer and from the menu
+  document.getElementById('faq-find-return')?.addEventListener('click', () => {
+    faqModal.classList.add('hidden');
+    openBot();
+  });
+  document.getElementById('menu-return')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeSideMenu();
+    openBot();
+  });
+
+  // City picker, from the menu
+  document.getElementById('menu-city')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeSideMenu();
+    openCityPicker();
+  });
+
   // Chat — open the standalone support chat page (round button on desktop, banner row on mobile)
-  const openChat = () => {
-    window.open('https://cargamos.eu/chat', '_blank', 'noopener');
-  };
   document.getElementById('btn-chat')?.addEventListener('click', openChat);
   document.getElementById('banner-chat')?.addEventListener('click', openChat);
 
@@ -407,14 +872,14 @@ function initControls() {
   document.getElementById('menu-how')?.addEventListener('click', (e) => {
     e.preventDefault();
     closeSideMenu();
-    faqModal.classList.remove('hidden');
+    openFaq();
   });
 
   // Pricing
   document.getElementById('menu-pricing')?.addEventListener('click', (e) => {
     e.preventDefault();
     closeSideMenu();
-    faqModal.classList.remove('hidden');
+    openFaq();
   });
 }
 
@@ -451,10 +916,15 @@ function applyTranslations() {
   });
   // Close station panel so it refreshes on next click
   document.getElementById('station-panel')?.classList.add('hidden');
+  // The assistant thread is already-rendered text; start it over in the new language.
+  const botModal = document.getElementById('bot-modal');
+  if (botModal && !botModal.classList.contains('hidden')) openBot();
 }
 
 // Init
 initBanner();
+initCityPicker();
+initBot();
 initControls();
 initLangSwitcher();
 applyTranslations();

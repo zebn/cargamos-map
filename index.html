@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Cargamos - Estaciones</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -89,14 +90,33 @@
     </div>
     <nav class="menu-nav">
       <a href="#" class="menu-item" id="menu-how" data-i18n="menu.how">🔋 ¿Cómo funciona?</a>
+      <a href="#" class="menu-item" id="menu-return" data-i18n="bot.open">¿Dónde devuelvo el powerbank?</a>
       <a href="#" class="menu-item" id="menu-pricing" data-i18n="menu.pricing">💰 Precios</a>
       <a href="#" class="menu-item" id="menu-faq" data-i18n="menu.faq">❓ FAQ</a>
+      <a href="#" class="menu-item" id="menu-city" data-i18n="menu.city">🏙️ Cambiar ciudad</a>
       <a href="https://apps.apple.com/es/app/cargamos/id6740075526" target="_blank" rel="noopener noreferrer"
         class="menu-item" data-i18n="menu.download">📱 Descargar App</a>
       <a href="https://play.google.com/store/apps/details?id=com.cargamos.charge" target="_blank"
         rel="noopener noreferrer" class="menu-item" data-i18n="menu.downloadAndroid">🤖 Google Play</a>
       <a href="mailto:info@cargamos.eu" class="menu-item" data-i18n="menu.contact">✉️ Contacto</a>
     </nav>
+  </div>
+
+  <!-- City Picker (shown when geolocation gives us nothing) -->
+  <div id="city-modal" class="modal hidden">
+    <div class="modal-content city-content">
+      <div class="modal-header">
+        <h2 data-i18n="city.title">¿En qué ciudad estás?</h2>
+        <button id="city-close" class="modal-close" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="city-subtitle" data-i18n="city.subtitle">
+          Elige una ciudad para ver los puntos Cargamos más cercanos.
+        </p>
+        <div id="city-list" class="city-list"></div>
+        <button id="city-locate" class="city-locate" data-i18n="city.locate">📍 Usar mi ubicación</button>
+      </div>
+    </div>
   </div>
 
   <!-- FAQ Modal -->
@@ -109,30 +129,44 @@
       <div class="modal-body">
         <details class="faq-item">
           <summary data-i18n="faq.q1">¿Cómo alquilo un powerbank?</summary>
-          <p data-i18n="faq.a1">Descarga la app Cargamos, escanea el código QR de la estación y retira tu powerbank.
-            ¡Así de fácil!</p>
+          <p data-i18n="faq.a1">Paga con tarjeta o con el móvil. Se retendrá un depósito reembolsable. Al devolver el
+            powerbank, se cobrará el alquiler y se liberará el resto.</p>
         </details>
         <details class="faq-item">
           <summary data-i18n="faq.q2">¿Cuánto cuesta?</summary>
-          <p data-i18n="faq.a2">Los primeros minutos son gratis. Después se cobra por minuto de uso. El precio máximo
-            diario está limitado.
-            Consulta los detalles en cada estación.</p>
+          <p data-i18n="faq.a2">Los primeros 2 minutos son gratis. Después, el precio depende del punto y tiene un
+            límite máximo diario. Consulta la tarifa en la estación.</p>
         </details>
         <details class="faq-item">
           <summary data-i18n="faq.q3">¿Dónde devuelvo el powerbank?</summary>
-          <p data-i18n="faq.a3">Puedes devolverlo en cualquier estación Cargamos con huecos libres. No tiene que ser la
-            misma donde lo
-            recogiste.</p>
+          <p data-i18n="faq.a3">Puedes devolverlo en cualquier punto Cargamos con huecos libres. No tiene que ser el
+            mismo donde lo recogiste.</p>
+          <button id="faq-find-return" class="faq-action" data-i18n="bot.open">¿Dónde devuelvo el powerbank?</button>
         </details>
         <details class="faq-item">
           <summary data-i18n="faq.q4">¿Qué pasa si no lo devuelvo?</summary>
-          <p data-i18n="faq.a4">Si no devuelves el powerbank en el plazo establecido, se cobrará el depósito completo.
-          </p>
+          <p data-i18n="faq.a4">Si no lo devuelves, se cobrará el importe establecido como valor del powerbank. El
+            alquiler finalizará y no habrá más cargos.</p>
         </details>
         <details class="faq-item">
           <summary data-i18n="faq.q5">¿Es compatible con mi teléfono?</summary>
-          <p data-i18n="faq.a5">Sí, nuestros powerbanks incluyen cables Lightning, USB-C y Micro USB.</p>
+          <p data-i18n="faq.a5">Sí. Nuestros powerbanks incluyen cables USB-C y Lightning.</p>
         </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- Return Assistant -->
+  <div id="bot-modal" class="modal hidden">
+    <div class="modal-content bot-content">
+      <div class="modal-header">
+        <h2 data-i18n="bot.title">Asistente Cargamos</h2>
+        <button id="bot-close" class="modal-close" aria-label="Cerrar">&times;</button>
+      </div>
+      <div id="bot-thread" class="bot-thread"></div>
+      <div class="bot-footer">
+        <span class="bot-hint" data-i18n="bot.hint">Datos en tiempo real del mapa Cargamos.</span>
+        <button id="bot-human" class="bot-human" data-i18n="bot.humanChat">Hablar con una persona</button>
       </div>
     </div>
   </div>
