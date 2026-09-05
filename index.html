@@ -27,7 +27,6 @@
         rel="noopener noreferrer" class="banner-btn" data-i18n="banner.download">
         Descargar App
       </a>
-      <button id="banner-close" class="banner-close" aria-label="Cerrar">&times;</button>
     </div>
     <button id="banner-chat" class="banner-chat">
       <svg class="banner-chat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -62,14 +61,6 @@
         <line x1="18" y1="12" x2="22" y2="12" />
       </svg>
     </button>
-    <button id="btn-faq" class="map-btn" aria-label="FAQ">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
-    </button>
     <button id="btn-lang" class="map-btn lang-btn" aria-label="Language">
       <span id="lang-label">ES</span>
     </button>
@@ -81,24 +72,16 @@
     </button>
   </div>
 
-  <!-- Side Menu -->
-  <div id="menu-overlay" class="menu-overlay hidden"></div>
+  <!-- Side Menu: bottom sheet, same mechanics as the station card -->
   <div id="side-menu" class="side-menu hidden">
-    <div class="menu-header">
-      <img src="/src/assets/cargamos-logo-big.png" alt="Cargamos" class="menu-logo" />
-      <button id="menu-close" class="menu-close" aria-label="Cerrar">&times;</button>
-    </div>
+    <button id="menu-close" class="panel-close" aria-label="Cerrar">&times;</button>
     <nav class="menu-nav">
-      <a href="#" class="menu-item" id="menu-how" data-i18n="menu.how">🔋 ¿Cómo funciona?</a>
       <a href="#" class="menu-item" id="menu-return" data-i18n="bot.open">¿Dónde devuelvo el powerbank?</a>
-      <a href="#" class="menu-item" id="menu-pricing" data-i18n="menu.pricing">💰 Precios</a>
-      <a href="#" class="menu-item" id="menu-faq" data-i18n="menu.faq">❓ FAQ</a>
+      <a href="#" class="menu-item" id="menu-faq" data-i18n="menu.faq">❓ Preguntas frecuentes</a>
       <a href="#" class="menu-item" id="menu-city" data-i18n="menu.city">🏙️ Cambiar ciudad</a>
-      <a href="https://apps.apple.com/es/app/cargamos/id6740075526" target="_blank" rel="noopener noreferrer"
-        class="menu-item" data-i18n="menu.download">📱 Descargar App</a>
-      <a href="https://play.google.com/store/apps/details?id=com.cargamos.charge" target="_blank"
-        rel="noopener noreferrer" class="menu-item" data-i18n="menu.downloadAndroid">🤖 Google Play</a>
       <a href="mailto:info@cargamos.eu" class="menu-item" data-i18n="menu.contact">✉️ Contacto</a>
+      <a href="https://cargamos.eu/privacidad" target="_blank" rel="noopener noreferrer" class="menu-item"
+        id="menu-privacy" data-i18n="menu.privacy">🔒 Política de privacidad</a>
     </nav>
   </div>
 
@@ -152,11 +135,15 @@
           <summary data-i18n="faq.q5">¿Es compatible con mi teléfono?</summary>
           <p data-i18n="faq.a5">Sí. Nuestros powerbanks incluyen cables USB-C y Lightning.</p>
         </details>
+        <div class="faq-chat-cta">
+          <p data-i18n="faq.needMoreHelp">¿No encuentras lo que buscas?</p>
+          <button id="faq-open-chat" class="faq-action" data-i18n="faq.openChat">Hablar con el asistente</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Return Assistant -->
+  <!-- Return Assistant: bottom sheet, same mechanics as the station card -->
   <div id="bot-modal" class="modal hidden">
     <div class="modal-content bot-content">
       <div class="modal-header">
@@ -165,9 +152,22 @@
       </div>
       <div id="bot-thread" class="bot-thread"></div>
       <div class="bot-footer">
-        <span class="bot-hint" data-i18n="bot.hint">Datos en tiempo real del mapa Cargamos.</span>
+        <div class="bot-footer-info">
+          <span class="bot-hint" data-i18n="bot.hint">Datos en tiempo real del mapa Cargamos.</span>
+          <a href="#" id="bot-faq-link" class="bot-faq-link" data-i18n="bot.viewFaq">Ver preguntas frecuentes</a>
+        </div>
         <button id="bot-human" class="bot-human" data-i18n="bot.humanChat">Hablar con una persona</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Cookie notice (LSSI) -->
+  <div id="cookie-bar" class="cookie-bar hidden">
+    <span class="cookie-text" data-i18n="cookie.text">Usamos cookies para el funcionamiento del mapa.</span>
+    <div class="cookie-actions">
+      <a href="https://cargamos.eu/privacidad" target="_blank" rel="noopener noreferrer" class="cookie-link"
+        data-i18n="cookie.privacyLink">Política de privacidad</a>
+      <button id="cookie-accept" class="cookie-accept" data-i18n="cookie.accept">Aceptar</button>
     </div>
   </div>
 

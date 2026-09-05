@@ -14,7 +14,9 @@ export interface City {
 
 export const CITIES: City[] = [
     { id: 'alicante', name: 'Alicante', lat: 38.3452, lng: -0.4815, zoom: 13 },
-    { id: 'madrid', name: 'Madrid', lat: 40.4168, lng: -3.7038, zoom: 12 },
+    // Centred between Sol and Retiro so the default view reads as a dense
+    // neighbourhood, not "the whole city" at a zoomed-out, sparse-looking level.
+    { id: 'madrid', name: 'Madrid', lat: 40.4161, lng: -3.6941, zoom: 13 },
     { id: 'valencia', name: 'Valencia', lat: 39.4699, lng: -0.3763, zoom: 13 },
     { id: 'benidorm', name: 'Benidorm', lat: 38.5342, lng: -0.131, zoom: 14 },
 ];

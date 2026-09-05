@@ -11,13 +11,10 @@ const translations: Record<Lang, Record<string, string>> = {
         'btn.geolocate': 'Mi ubicación',
         'btn.faq': 'FAQ',
         // Side menu
-        'menu.how': '🔋 ¿Cómo funciona?',
-        'menu.pricing': '💰 Precios',
-        'menu.faq': '❓ FAQ',
+        'menu.faq': '❓ Preguntas frecuentes',
         'menu.city': '🏙️ Cambiar ciudad',
-        'menu.download': '📱 Descargar App',
-        'menu.downloadAndroid': '🤖 Google Play',
         'menu.contact': '✉️ Contacto',
+        'menu.privacy': '🔒 Política de privacidad',
         // City picker
         'city.title': '¿En qué ciudad estás?',
         'city.subtitle': 'Elige una ciudad para ver los puntos Cargamos más cercanos.',
@@ -34,15 +31,18 @@ const translations: Record<Lang, Record<string, string>> = {
         'faq.a4': 'Si no lo devuelves, se cobrará el importe establecido como valor del powerbank. El alquiler finalizará y no habrá más cargos.',
         'faq.q5': '¿Es compatible con mi teléfono?',
         'faq.a5': 'Sí. Nuestros powerbanks incluyen cables USB-C y Lightning.',
+        'faq.needMoreHelp': '¿No encuentras lo que buscas?',
+        'faq.openChat': 'Hablar con el asistente',
         // Station info
         'station.available': 'Disponibles',
         'station.freeSlots': 'Huecos libres',
         'station.total': 'Total',
-        'station.freeMinutes': '{0} min gratis, luego {1}{2}/{3} min',
-        'station.maxPrice': 'Máx: {0}{1}/día',
+        'station.freeMinutes': '{0} min gratis, luego {1}/{2} min',
+        'station.maxPrice': 'Máx: {0}/día',
         'station.navigate': 'Cómo llegar',
         'station.online': 'Online',
         'station.offline': 'Offline',
+        'station.offlineNotice': 'Temporalmente fuera de servicio',
         'station.schedule': 'Horario',
         'station.positions': 'Zonas del local',
         'station.positionsLoading': 'Cargando zonas...',
@@ -64,9 +64,14 @@ const translations: Record<Lang, Record<string, string>> = {
         'bot.otherCity': 'Otra ciudad',
         'bot.useLocation': '📍 Usar mi ubicación',
         'bot.humanChat': 'Hablar con una persona',
+        'bot.viewFaq': 'Ver preguntas frecuentes',
         'bot.hint': 'Datos en tiempo real del mapa Cargamos.',
         // Geolocation
         'geo.error': 'No se pudo obtener tu ubicación',
+        // Cookies
+        'cookie.text': 'Usamos cookies para el funcionamiento del mapa.',
+        'cookie.accept': 'Aceptar',
+        'cookie.privacyLink': 'Política de privacidad',
     },
     en: {
         'banner.subtitle': 'Rent a powerbank instantly',
@@ -75,13 +80,10 @@ const translations: Record<Lang, Record<string, string>> = {
         'btn.menu': 'Menu',
         'btn.geolocate': 'My location',
         'btn.faq': 'FAQ',
-        'menu.how': '🔋 How does it work?',
-        'menu.pricing': '💰 Pricing',
         'menu.faq': '❓ FAQ',
         'menu.city': '🏙️ Change city',
-        'menu.download': '📱 Download App',
-        'menu.downloadAndroid': '🤖 Google Play',
         'menu.contact': '✉️ Contact',
+        'menu.privacy': '🔒 Privacy policy',
         'city.title': 'Which city are you in?',
         'city.subtitle': 'Pick a city to see the nearest Cargamos points.',
         'city.locate': '📍 Use my location',
@@ -96,14 +98,17 @@ const translations: Record<Lang, Record<string, string>> = {
         'faq.a4': "If you don't return it, the amount set as the value of the powerbank will be charged. The rental ends there and there are no further charges.",
         'faq.q5': 'Is it compatible with my phone?',
         'faq.a5': 'Yes. Our powerbanks include USB-C and Lightning cables.',
+        'faq.needMoreHelp': "Can't find what you're looking for?",
+        'faq.openChat': 'Chat with the assistant',
         'station.available': 'Available',
         'station.freeSlots': 'Free slots',
         'station.total': 'Total',
-        'station.freeMinutes': '{0} min free, then {1}{2}/{3} min',
-        'station.maxPrice': 'Max: {0}{1}/day',
+        'station.freeMinutes': '{0} min free, then {1}/{2} min',
+        'station.maxPrice': 'Max: {0}/day',
         'station.navigate': 'Get directions',
         'station.online': 'Online',
         'station.offline': 'Offline',
+        'station.offlineNotice': 'Temporarily out of service',
         'station.schedule': 'Schedule',
         'station.positions': 'Zones',
         'station.positionsLoading': 'Loading zones...',
@@ -124,8 +129,12 @@ const translations: Record<Lang, Record<string, string>> = {
         'bot.otherCity': 'Another city',
         'bot.useLocation': '📍 Use my location',
         'bot.humanChat': 'Talk to a person',
+        'bot.viewFaq': 'View FAQ',
         'bot.hint': 'Live data from the Cargamos map.',
         'geo.error': 'Could not get your location',
+        'cookie.text': 'We use cookies for the map to work.',
+        'cookie.accept': 'Accept',
+        'cookie.privacyLink': 'Privacy policy',
     },
     ru: {
         'banner.subtitle': 'Арендуй павербанк мгновенно',
@@ -134,13 +143,10 @@ const translations: Record<Lang, Record<string, string>> = {
         'btn.menu': 'Меню',
         'btn.geolocate': 'Моё местоположение',
         'btn.faq': 'FAQ',
-        'menu.how': '🔋 Как это работает?',
-        'menu.pricing': '💰 Цены',
-        'menu.faq': '❓ FAQ',
+        'menu.faq': '❓ Частые вопросы',
         'menu.city': '🏙️ Сменить город',
-        'menu.download': '📱 Скачать приложение',
-        'menu.downloadAndroid': '🤖 Google Play',
         'menu.contact': '✉️ Контакты',
+        'menu.privacy': '🔒 Политика конфиденциальности',
         'city.title': 'В каком городе вы находитесь?',
         'city.subtitle': 'Выберите город, чтобы увидеть ближайшие точки Cargamos.',
         'city.locate': '📍 Определить автоматически',
@@ -155,14 +161,17 @@ const translations: Record<Lang, Record<string, string>> = {
         'faq.a4': 'Если вы не вернёте павербанк, будет списана сумма, установленная как его стоимость. Аренда на этом завершится, дальнейших списаний не будет.',
         'faq.q5': 'Подходит ли для моего телефона?',
         'faq.a5': 'Да. Наши павербанки оснащены кабелями USB-C и Lightning.',
+        'faq.needMoreHelp': 'Не нашли ответ на свой вопрос?',
+        'faq.openChat': 'Написать ассистенту',
         'station.available': 'Доступно',
         'station.freeSlots': 'Свободные слоты',
         'station.total': 'Всего',
-        'station.freeMinutes': '{0} мин бесплатно, затем {1}{2}/{3} мин',
-        'station.maxPrice': 'Макс: {0}{1}/день',
+        'station.freeMinutes': '{0} мин бесплатно, затем {1}/{2} мин',
+        'station.maxPrice': 'Макс: {0}/день',
         'station.navigate': 'Как добраться',
         'station.online': 'Онлайн',
         'station.offline': 'Офлайн',
+        'station.offlineNotice': 'Временно не работает',
         'station.schedule': 'Расписание',
         'station.positions': 'Зоны заведения',
         'station.positionsLoading': 'Загрузка зон...',
@@ -183,15 +192,27 @@ const translations: Record<Lang, Record<string, string>> = {
         'bot.otherCity': 'Другой город',
         'bot.useLocation': '📍 Определить местоположение',
         'bot.humanChat': 'Связаться с оператором',
+        'bot.viewFaq': 'Смотреть частые вопросы',
         'bot.hint': 'Данные в реальном времени с карты Cargamos.',
         'geo.error': 'Не удалось определить местоположение',
+        'cookie.text': 'Мы используем cookies для работы карты.',
+        'cookie.accept': 'Принять',
+        'cookie.privacyLink': 'Политика конфиденциальности',
     },
 };
 
 const LANG_KEY = 'cargamos-lang';
 const LANG_LABELS: Record<Lang, string> = { es: 'ES', en: 'EN', ru: 'RU' };
+const KNOWN_LANGS: Lang[] = ['es', 'en', 'ru'];
 
-let currentLang: Lang = (localStorage.getItem(LANG_KEY) as Lang) || 'es';
+/** First visit, no saved preference yet: read the browser's language, default to Spanish. */
+function detectLang(): Lang {
+    const primary = (navigator.language || '').slice(0, 2).toLowerCase();
+    return (KNOWN_LANGS as string[]).includes(primary) ? (primary as Lang) : 'es';
+}
+
+const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
+let currentLang: Lang = savedLang && KNOWN_LANGS.includes(savedLang) ? savedLang : detectLang();
 const listeners: Array<(lang: Lang) => void> = [];
 
 export function t(key: string, ...args: string[]): string {

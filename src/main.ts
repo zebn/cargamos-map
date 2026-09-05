@@ -1,4 +1,3 @@
-import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import { fetchStations, fetchAllPriceStrategies, fetchCabinetPositions, fetchStationCard } from './api';
 import type { Station, PriceStrategy, CabinetPosition, StationCard } from './types';
 import { t, getLang, setLang, onLangChange, LANG_LABELS, type Lang } from './i18n';
@@ -13,12 +12,23 @@ const CHAT_URL = 'https://cargamos.eu/chat';
 let map: google.maps.Map;
 let markers: google.maps.marker.AdvancedMarkerElement[] = [];
 let subMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
-let clusterer: MarkerClusterer;
 let debounceTimer: ReturnType<typeof setTimeout>;
 let priceMap: Map<string, PriceStrategy> = new Map();
 
 /** Bumped on every station card open so a slow fetch can't paint over a newer card. */
 let cardToken = 0;
+
+/**
+ * The visitor's coordinates, cached the moment any part of the app (map
+ * init, the geolocate button, the return assistant) successfully reads them.
+ * Shared state so the return assistant never has to ask the browser twice.
+ */
+let userPosition: google.maps.LatLngLiteral | null = null;
+
+function rememberPosition(pos: GeolocationPosition): google.maps.LatLngLiteral {
+  userPosition = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  return userPosition;
+}
 
 async function initMap() {
   const { Map } = await google.maps.importLibrary('maps') as google.maps.MapsLibrary;
@@ -35,26 +45,11 @@ async function initMap() {
     gestureHandling: 'greedy',
     disableDefaultUI: false,
     zoomControl: true,
+    panControl: false,
     streetViewControl: false,
     fullscreenControl: false,
     mapTypeControl: false,
     clickableIcons: false,
-  });
-
-  clusterer = new MarkerClusterer({
-    map,
-    markers: [],
-    renderer: {
-      render({ count, position }) {
-        const el = document.createElement('div');
-        el.className = 'cluster-marker';
-        el.textContent = String(count);
-        return new google.maps.marker.AdvancedMarkerElement({
-          position,
-          content: el,
-        });
-      },
-    },
   });
 
   // Load stations on map idle
@@ -82,7 +77,7 @@ function locateOrAskForCity() {
   }
 
   navigator.geolocation.getCurrentPosition(
-    (pos) => map.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+    (pos) => map.setCenter(rememberPosition(pos)),
     fallback,
     { timeout: 8000, maximumAge: 600000 },
   );
@@ -104,57 +99,83 @@ async function loadStations() {
   }
 }
 
-/** Online, publicly listed venues — what a customer may actually walk to. */
+/**
+ * Publicly listed venues — what a customer may actually walk to. Offline
+ * stations stay in: hiding them would thin out the map for no reason, since
+ * the card and marker both mark them as unavailable instead.
+ */
 function visibleStations(stations: Station[]): Station[] {
   return stations.filter((station) => {
     const lat = parseFloat(station.latitude);
     const lng = parseFloat(station.longitude);
     if (isNaN(lat) || isNaN(lng)) return false;
-    if (station.infoStatus !== ONLINE) return false;
     return isPublicStation(station.newID, station.shopName, lat, lng);
   });
 }
 
+type MarkerTier = 'dot' | 'mid' | 'full';
+
+/**
+ * At low zoom a full logo pin per station would overlap into mush; a plain
+ * vector dot stays crisp and cheap however many are on screen. Only at
+ * street level does the pin earn its logo and larger tap target back.
+ */
+function markerTier(zoom: number): MarkerTier {
+  if (zoom < 13) return 'dot';
+  if (zoom < 15) return 'mid';
+  return 'full';
+}
+
 function updateMarkers(stations: Station[]) {
-  clusterer.clearMarkers();
   markers.forEach((m) => (m.map = null));
   markers = [];
+
+  const tier = markerTier(map.getZoom() ?? DEFAULT_CITY.zoom);
 
   visibleStations(stations).forEach((station) => {
     const lat = parseFloat(station.latitude);
     const lng = parseFloat(station.longitude);
 
-    const freeNum = parseInt(station.freeNum) || 0;
+    const isOnline = station.infoStatus === ONLINE;
     const isProntoCharge = station.pSfid === '239652998875591';
     const logo = isProntoCharge ? prontoChargeLogo : cargamosLogo;
 
     const el = document.createElement('div');
-    el.className = `station-marker online${isProntoCharge ? ' pronto-charge' : ''}`;
-    el.innerHTML = `
-      <div class="marker-icon">
-        <img src="${logo}" alt="" class="marker-logo" />
-        <span class="marker-badge">${freeNum}</span>
-      </div>
-    `;
+    el.className = `station-marker ${isOnline ? 'online' : 'offline'}${isProntoCharge ? ' pronto-charge' : ''}`;
+    el.innerHTML = tier === 'full'
+      ? `<div class="marker-icon"><img src="${logo}" alt="" class="marker-logo" /></div>`
+      : `<div class="marker-icon"><span class="marker-dot marker-dot-${tier}"></span></div>`;
 
     const marker = new google.maps.marker.AdvancedMarkerElement({
       position: { lat, lng },
       map,
       content: el,
       title: station.shopName,
+      collisionBehavior: google.maps.CollisionBehavior.REQUIRED,
     });
 
     marker.addListener('click', () => showStationInfo(station));
     markers.push(marker);
   });
-
-  clusterer.addMarkers(markers);
 }
 
 function decodeHtmlEntities(text: string): string {
   const textarea = document.createElement('textarea');
   textarea.innerHTML = text;
   return textarea.value;
+}
+
+/**
+ * Spanish (and Russian) write the currency after the amount with a comma
+ * decimal — "1,99 €" — while English keeps "€1.99". The API always hands us
+ * a plain decimal string, so locale is applied here rather than trusted.
+ */
+function formatPrice(amount: string, currency: string): string {
+  const value = parseFloat(amount);
+  if (isNaN(value)) return `${currency}${amount}`;
+  return getLang() === 'en'
+    ? `${currency}${value.toFixed(2)}`
+    : `${value.toFixed(2).replace('.', ',')} ${currency}`;
 }
 
 function showStationInfo(station: Station) {
@@ -179,19 +200,8 @@ function showStationInfo(station: Station) {
     ? encodeURI(station.shopBanner)
     : (station.pSfid === '239652998875591' ? prontoChargeLogo : cargamosLogo);
 
-  content.innerHTML = `
-    <div class="card-header">
-      <div class="card-photo">
-        <img src="${bannerSrc}" alt="" />
-        <span class="card-status ${isOnline ? 'online' : 'offline'}">${isOnline ? t('station.online') : t('station.offline')}</span>
-      </div>
-      <div class="card-title">
-        <h3 class="card-name"></h3>
-        <p class="card-address"></p>
-        ${station.shopTime ? `<p class="card-time">🕐 ${t('station.schedule')}: ${station.shopTime}</p>` : ''}
-      </div>
-    </div>
-    <div class="card-stats">
+  const statsHtml = isOnline
+    ? `<div class="card-stats">
       <div class="card-stat available">
         <span class="card-stat-value">${station.freeNum}</span>
         <span class="card-stat-label">${t('station.available')}</span>
@@ -204,18 +214,37 @@ function showStationInfo(station: Station) {
         <span class="card-stat-value">${station.batteryNum}</span>
         <span class="card-stat-label">${t('station.total')}</span>
       </div>
+    </div>`
+    : `<div class="card-offline-notice">${t('station.offlineNotice')}</div>`;
+
+  const navBtnHtml = isOnline
+    ? `<a class="card-nav-btn" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(station.latitude + ',' + station.longitude)}" target="_blank" rel="noopener noreferrer">
+      📍 ${t('station.navigate')}
+    </a>`
+    : '';
+
+  content.innerHTML = `
+    <div class="card-header">
+      <div class="card-photo">
+        <img src="${bannerSrc}" alt="" />
+        <span class="card-status ${isOnline ? 'online' : 'offline'}">${isOnline ? t('station.online') : t('station.offline')}</span>
+      </div>
+      <div class="card-title">
+        <h3 class="card-name"></h3>
+        <p class="card-address"></p>
+        ${station.shopTime ? `<p class="card-time">🕐 ${t('station.schedule')}: ${station.shopTime}</p>` : ''}
+      </div>
     </div>
+    ${statsHtml}
     <div class="card-pricing">
-      <p>${t('station.freeMinutes', String(freeMinutes), currency, pricePerUnit, unitMinutes)}</p>
-      <p>${t('station.maxPrice', currency, maxPrice)}</p>
+      <p>${t('station.freeMinutes', String(freeMinutes), formatPrice(pricePerUnit, currency), unitMinutes)}</p>
+      <p>${t('station.maxPrice', formatPrice(maxPrice, currency))}</p>
     </div>
     <div class="card-notes" id="card-notes"></div>
     <div class="card-positions" id="card-positions">
       <p class="positions-loading">${t('station.positionsLoading')}</p>
     </div>
-    <a class="card-nav-btn" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(station.latitude + ',' + station.longitude)}" target="_blank" rel="noopener noreferrer">
-      📍 ${t('station.navigate')}
-    </a>
+    ${navBtnHtml}
   `;
 
   // Set text content safely to prevent XSS
@@ -499,7 +528,7 @@ function initBannerHeight() {
   if (!banner) return;
 
   const sync = () => {
-    const height = banner.classList.contains('hidden') ? 0 : banner.getBoundingClientRect().height;
+    const height = banner.getBoundingClientRect().height;
     document.documentElement.style.setProperty('--banner-h', `${Math.round(height)}px`);
   };
 
@@ -510,17 +539,8 @@ function initBannerHeight() {
   sync();
 }
 
-// Banner close
+/** The support banner is permanent — it has no close control, so both its rows always stay reachable. */
 function initBanner() {
-  const closeBtn = document.getElementById('banner-close');
-  const banner = document.getElementById('app-banner');
-
-  closeBtn?.addEventListener('click', () => {
-    banner?.classList.add('hidden');
-    document.getElementById('map')?.classList.add('no-banner');
-    document.documentElement.style.setProperty('--banner-h', '0px');
-  });
-
   // Detect platform for download link
   const link = document.getElementById('download-link') as HTMLAnchorElement;
   const ua = navigator.userAgent.toLowerCase();
@@ -585,7 +605,7 @@ function initCityPicker() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         locateBtn.disabled = false;
-        map?.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        map?.setCenter(rememberPosition(pos));
         map?.setZoom(15);
         closeCityPicker();
       },
@@ -656,6 +676,14 @@ function botChoices(options: Array<{ label: string; onPick: () => void }>): HTML
   return row;
 }
 
+function openFaq() {
+  document.getElementById('faq-modal')?.classList.remove('hidden');
+}
+
+function closeFaq() {
+  document.getElementById('faq-modal')?.classList.add('hidden');
+}
+
 function openBot() {
   const modal = document.getElementById('bot-modal');
   if (!modal) return;
@@ -670,8 +698,20 @@ function closeBot() {
   document.getElementById('bot-modal')?.classList.add('hidden');
 }
 
-/** Locate the visitor if we can, otherwise fall back to picking a city. */
+/**
+ * Locate the visitor if we can, otherwise fall back to picking a city.
+ *
+ * The map already asks for this permission on load, so by the time someone
+ * opens the assistant the position is usually cached — reuse it instead of
+ * prompting the browser a second time, which is what made the bot answer
+ * "couldn't locate you" even after the visitor had already granted access.
+ */
 function startReturnLookup() {
+  if (userPosition) {
+    showReturnPoints(userPosition, null);
+    return;
+  }
+
   if (!navigator.geolocation) {
     askBotCity();
     return;
@@ -681,7 +721,7 @@ function startReturnLookup() {
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       status.remove();
-      showReturnPoints({ lat: pos.coords.latitude, lng: pos.coords.longitude }, null);
+      showReturnPoints(rememberPosition(pos), null);
     },
     () => {
       status.remove();
@@ -720,7 +760,7 @@ async function showReturnPoints(origin: google.maps.LatLngLiteral, city: City | 
   typing.remove();
 
   const nearest = stations
-    .filter((station) => Number(station.canReturnNum) > 0)
+    .filter((station) => station.infoStatus === ONLINE && Number(station.canReturnNum) > 0)
     .map((station) => ({
       station,
       distance: distanceMeters(origin, {
@@ -813,8 +853,7 @@ function initControls() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          map.setCenter(userPos);
+          map.setCenter(rememberPosition(pos));
           map.setZoom(15);
         },
         () => alert(t('geo.error')),
@@ -822,28 +861,37 @@ function initControls() {
     }
   });
 
-  // FAQ button
+  // FAQ modal
   const faqModal = document.getElementById('faq-modal')!;
-  const openFaq = () => faqModal.classList.remove('hidden');
-  document.getElementById('btn-faq')?.addEventListener('click', openFaq);
-  document.getElementById('faq-close')?.addEventListener('click', () => faqModal.classList.add('hidden'));
+  document.getElementById('faq-close')?.addEventListener('click', closeFaq);
   document.getElementById('menu-faq')?.addEventListener('click', (e) => {
     e.preventDefault();
     closeSideMenu();
     openFaq();
   });
   faqModal.addEventListener('click', (e) => {
-    if (e.target === faqModal) faqModal.classList.add('hidden');
+    if (e.target === faqModal) closeFaq();
   });
 
   // Return assistant, from the FAQ answer and from the menu
   document.getElementById('faq-find-return')?.addEventListener('click', () => {
-    faqModal.classList.add('hidden');
+    closeFaq();
     openBot();
   });
   document.getElementById('menu-return')?.addEventListener('click', (e) => {
     e.preventDefault();
     closeSideMenu();
+    openBot();
+  });
+
+  // Chat <-> FAQ cross-links, so landing in the wrong one is a single tap away
+  document.getElementById('bot-faq-link')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeBot();
+    openFaq();
+  });
+  document.getElementById('faq-open-chat')?.addEventListener('click', () => {
+    closeFaq();
     openBot();
   });
 
@@ -860,32 +908,28 @@ function initControls() {
 
   // Side menu
   const sideMenu = document.getElementById('side-menu')!;
-  const menuOverlay = document.getElementById('menu-overlay')!;
   document.getElementById('btn-menu')?.addEventListener('click', () => {
     sideMenu.classList.remove('hidden');
-    menuOverlay.classList.remove('hidden');
   });
   document.getElementById('menu-close')?.addEventListener('click', closeSideMenu);
-  menuOverlay.addEventListener('click', closeSideMenu);
-
-  // How it works
-  document.getElementById('menu-how')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    closeSideMenu();
-    openFaq();
-  });
-
-  // Pricing
-  document.getElementById('menu-pricing')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    closeSideMenu();
-    openFaq();
-  });
 }
 
 function closeSideMenu() {
   document.getElementById('side-menu')?.classList.add('hidden');
-  document.getElementById('menu-overlay')?.classList.add('hidden');
+}
+
+const COOKIE_CONSENT_KEY = 'cargamos-cookie-consent';
+
+/** LSSI notice for the geolocation prompt and Google Maps' own cookies — shown once, remembered locally. */
+function initCookieBar() {
+  const bar = document.getElementById('cookie-bar');
+  if (!bar || localStorage.getItem(COOKIE_CONSENT_KEY) === '1') return;
+
+  bar.classList.remove('hidden');
+  document.getElementById('cookie-accept')?.addEventListener('click', () => {
+    localStorage.setItem(COOKIE_CONSENT_KEY, '1');
+    bar.classList.add('hidden');
+  });
 }
 
 // Language switcher
@@ -927,6 +971,7 @@ initCityPicker();
 initBot();
 initControls();
 initLangSwitcher();
+initCookieBar();
 applyTranslations();
 initMap().then(() => {
   console.log('Map initialized successfully');
