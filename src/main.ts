@@ -115,11 +115,7 @@ function visibleStations(stations: Station[]): Station[] {
 
 type MarkerTier = 'dot' | 'mid' | 'full';
 
-/**
- * At low zoom a full logo pin per station would overlap into mush; a plain
- * vector dot stays crisp and cheap however many are on screen. Only at
- * street level does the pin earn its logo and larger tap target back.
- */
+/** The logo pin always shows — only its size shrinks at low zoom, so the map still reads as one dense, branded network. */
 function markerTier(zoom: number): MarkerTier {
   if (zoom < 13) return 'dot';
   if (zoom < 15) return 'mid';
@@ -131,6 +127,7 @@ function updateMarkers(stations: Station[]) {
   markers = [];
 
   const tier = markerTier(map.getZoom() ?? DEFAULT_CITY.zoom);
+  const sizeClass = tier === 'full' ? '' : ` marker-logo-${tier}`;
 
   visibleStations(stations).forEach((station) => {
     const lat = parseFloat(station.latitude);
@@ -142,9 +139,7 @@ function updateMarkers(stations: Station[]) {
 
     const el = document.createElement('div');
     el.className = `station-marker ${isOnline ? 'online' : 'offline'}${isProntoCharge ? ' pronto-charge' : ''}`;
-    el.innerHTML = tier === 'full'
-      ? `<div class="marker-icon"><img src="${logo}" alt="" class="marker-logo" /></div>`
-      : `<div class="marker-icon"><span class="marker-dot marker-dot-${tier}"></span></div>`;
+    el.innerHTML = `<div class="marker-icon"><img src="${logo}" alt="" class="marker-logo${sizeClass}" /></div>`;
 
     const marker = new google.maps.marker.AdvancedMarkerElement({
       position: { lat, lng },

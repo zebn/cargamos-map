@@ -187,30 +187,18 @@ html, body {
   padding: 3px;
 }
 
-/* Low/mid zoom marker: a plain vector dot, no logo, so the map can fit many
-   without turning into overlapping mush. */
-.marker-dot {
-  display: block;
-  border-radius: 50%;
-  background: rgb(251, 222, 25);
-  border: 1.5px solid #1a1a1a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+/* Low/mid zoom: the same logo pin, just smaller, so the map still reads as
+   one branded network instead of switching to an unbranded dot. */
+.marker-logo-dot {
+  width: 14px;
+  height: 14px;
+  border-width: 1px;
 }
 
-.marker-dot-dot {
-  width: 11px;
-  height: 11px;
-}
-
-.marker-dot-mid {
-  width: 18px;
-  height: 18px;
-  border-width: 2px;
-}
-
-.offline .marker-dot {
-  background: #9E9E9E;
-  border-color: #757575;
+.marker-logo-mid {
+  width: 22px;
+  height: 22px;
+  border-width: 1.5px;
 }
 
 /* InfoWindow Styles */
